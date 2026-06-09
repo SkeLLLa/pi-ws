@@ -21,7 +21,7 @@ echo "Synced: node=$NODE_VERSION pnpm=$PNPM_VERSION"
 """
 
 [tasks."examples:chat"]
-description = "Build and run the browser chat example. Configure with PI_API_KEY, provider API keys, provider BASE_URL vars, PI_PROVIDER, PI_MODEL, PI_BASE_URL, PI_API, PI_PIPE_HOST, and PI_PIPE_PORT."
+description = "Build and run the browser chat example. Configure with PI_API_KEY, provider API keys, provider BASE_URL vars, PI_PROVIDER, PI_MODEL, PI_BASE_URL, PI_API, PI_WS_HOST, and PI_WS_PORT."
 run = """
 #!/usr/bin/env bash
 set -euo pipefail

@@ -35,15 +35,15 @@ export interface PiProcessConfig {
 }
 
 /**
- * Runtime configuration for a `PiPipe` instance.
+ * Runtime configuration for a `PiWs` instance.
  *
  * @remarks
- * `new PiPipe()` merges the provided partial config over the defaults returned
+ * `new PiWs()` merges the provided partial config over the defaults returned
  * by `loadConfig(process.env)`.
  *
  * @public
  */
-export interface PiPipeConfig {
+export interface PiWsConfig {
   /**
    * Host or IP address to bind the HTTP/WebSocket server to.
    *
@@ -158,7 +158,7 @@ export interface RouteInstaller {
 }
 
 /**
- * Running server handle returned by `PiPipe.listen()`.
+ * Running server handle returned by `PiWs.listen()`.
  *
  * @public
  */
@@ -178,7 +178,7 @@ export interface RunningServer {
  *
  * @public
  */
-export interface PiPipeListenOptions {
+export interface PiWsListenOptions {
   /**
    * Optional host override for this listen call.
    */

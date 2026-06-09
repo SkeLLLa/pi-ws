@@ -6,7 +6,7 @@
 
 Library-first entrypoint for pi-ws.
 
-Use `new PiPipe()` to embed the server programmatically, or use the `pi-ws` binary for the default as-is server.
+Use `new PiWs()` to embed the server programmatically, or use the `pi-ws` binary for the default as-is server.
 
 ## Classes
 
@@ -14,22 +14,18 @@ Use `new PiPipe()` to embed the server programmatically, or use the `pi-ws` bina
 
 Class
 
-
 </th><th>
 
 Description
 
-
 </th></tr></thead>
 <tbody><tr><td>
 
-[PiPipe](./pi-ws.pipipe.md)
-
+[PiWs](./pi-ws.piws.md)
 
 </td><td>
 
 Library-first wrapper around `uWebSockets.js` that exposes a built-in Pi RPC route and lets callers add their own HTTP and WebSocket handlers.
-
 
 </td></tr>
 </tbody></table>
@@ -40,33 +36,27 @@ Library-first wrapper around `uWebSockets.js` that exposes a built-in Pi RPC rou
 
 Function
 
-
 </th><th>
 
 Description
 
-
 </th></tr></thead>
 <tbody><tr><td>
 
-[createPiPipeServer(config, installers)](./pi-ws.createpipipeserver.md)
-
+[createPiWsServer(config, installers)](./pi-ws.createpiwsserver.md)
 
 </td><td>
 
-Convenience factory that creates a `PiPipe`<!-- -->, installs routes, and starts listening.
-
+Convenience factory that creates a `PiWs`<!-- -->, installs routes, and starts listening.
 
 </td></tr>
 <tr><td>
 
 [loadConfig(env)](./pi-ws.loadconfig.md)
 
-
 </td><td>
 
-Loads `PiPipe` configuration from environment variables.
-
+Loads `PiWs` configuration from environment variables.
 
 </td></tr>
 </tbody></table>
@@ -77,88 +67,72 @@ Loads `PiPipe` configuration from environment variables.
 
 Interface
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [HttpRoute](./pi-ws.httproute.md)
 
-
 </td><td>
 
 Declarative HTTP route registration.
-
-
-</td></tr>
-<tr><td>
-
-[PiPipeConfig](./pi-ws.pipipeconfig.md)
-
-
-</td><td>
-
-Runtime configuration for a `PiPipe` instance.
-
-
-</td></tr>
-<tr><td>
-
-[PiPipeListenOptions](./pi-ws.pipipelistenoptions.md)
-
-
-</td><td>
-
-Optional per-listen overrides for host and port.
-
 
 </td></tr>
 <tr><td>
 
 [PiProcessConfig](./pi-ws.piprocessconfig.md)
 
-
 </td><td>
 
 Process launch settings for the local Pi RPC subprocess.
 
+</td></tr>
+<tr><td>
+
+[PiWsConfig](./pi-ws.piwsconfig.md)
+
+</td><td>
+
+Runtime configuration for a `PiWs` instance.
+
+</td></tr>
+<tr><td>
+
+[PiWsListenOptions](./pi-ws.piwslistenoptions.md)
+
+</td><td>
+
+Optional per-listen overrides for host and port.
 
 </td></tr>
 <tr><td>
 
 [RouteInstaller](./pi-ws.routeinstaller.md)
 
-
 </td><td>
 
 Imperative installer for direct `uWebSockets.js` access.
-
 
 </td></tr>
 <tr><td>
 
 [RunningServer](./pi-ws.runningserver.md)
 
-
 </td><td>
 
-Running server handle returned by `PiPipe.listen()`<!-- -->.
-
+Running server handle returned by `PiWs.listen()`<!-- -->.
 
 </td></tr>
 <tr><td>
 
 [WebSocketRoute](./pi-ws.websocketroute.md)
 
-
 </td><td>
 
 Declarative WebSocket route registration.
-
 
 </td></tr>
 </tbody></table>
@@ -169,34 +143,27 @@ Declarative WebSocket route registration.
 
 Type Alias
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [HttpHandler](./pi-ws.httphandler.md)
 
-
 </td><td>
 
 HTTP route handler callback.
-
 
 </td></tr>
 <tr><td>
 
 [HttpMethod](./pi-ws.httpmethod.md)
 
-
 </td><td>
 
 Supported `uWebSockets.js` HTTP route methods.
 
-
 </td></tr>
 </tbody></table>
-

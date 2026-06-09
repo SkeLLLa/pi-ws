@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { loadConfig, PiPipe } from '../index.js';
+import { loadConfig, PiWs } from '../index.js';
 
 const config = loadConfig(process.env);
-const pipe = new PiPipe(config);
+const pipe = new PiWs(config);
 const server = await pipe.listen();
 
 console.log(

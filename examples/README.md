@@ -222,10 +222,10 @@ and model separate because it maps cleanly to environment variables.
 
 Defaults:
 
-| Variable       | Default     |
-| -------------- | ----------- |
-| `PI_PIPE_HOST` | `127.0.0.1` |
-| `PI_PIPE_PORT` | `8787`      |
+| Variable     | Default     |
+| ------------ | ----------- |
+| `PI_WS_HOST` | `127.0.0.1` |
+| `PI_WS_PORT` | `8787`      |
 
 Override them:
 
@@ -233,7 +233,7 @@ Override them:
 OPENAI_API_KEY='sk-...' \
   PI_PROVIDER=openai \
   PI_MODEL='gpt-4.1' \
-  PI_PIPE_PORT=9000 \
+  PI_WS_PORT=9000 \
   mise run examples:chat
 ```
 

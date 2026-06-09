@@ -13,12 +13,12 @@ void test('loadConfig applies defaults', () => {
 
 void test('loadConfig parses env overrides', () => {
   const config = loadConfig({
-    PI_PIPE_HOST: '127.0.0.1',
-    PI_PIPE_PORT: '9000',
-    PI_PIPE_WS_PREFIX: 'rpc/',
-    PI_PIPE_PI_COMMAND: '/custom/pi',
-    PI_PIPE_PI_ARGS: '["--provider","openai","--model","gpt-5"]',
-    PI_PIPE_PI_CWD: '/repo',
+    PI_WS_HOST: '127.0.0.1',
+    PI_WS_PORT: '9000',
+    PI_WS_PREFIX: 'rpc/',
+    PI_WS_PI_COMMAND: '/custom/pi',
+    PI_WS_PI_ARGS: '["--provider","openai","--model","gpt-5"]',
+    PI_WS_PI_CWD: '/repo',
   });
 
   assert.equal(config.host, '127.0.0.1');

@@ -17,7 +17,7 @@ ws://0.0.0.0:8787/ws/pi
 Clients send pi RPC JSON objects as text WebSocket frames. pi-ws validates
 each frame as a JSON object and forwards it to pi as one JSONL command. pi RPC
 events and responses are forwarded back as JSON text frames. Bridge lifecycle
-events use `pi_pipe_*` event types.
+events use `pi_ws_*` event types.
 
 ## Requirements
 
@@ -57,12 +57,12 @@ pnpm build:docs
 
 ## Library Usage
 
-`pi-ws` is library-first. Embed `PiPipe`, add your routes, then listen:
+`pi-ws` is library-first. Embed `PiWs`, add your routes, then listen:
 
 ```ts
-import { PiPipe } from 'pi-ws';
+import { PiWs } from 'pi-ws';
 
-const pipe = new PiPipe({
+const pipe = new PiWs({
   host: '127.0.0.1',
   port: 8787,
 });
@@ -120,9 +120,9 @@ pnpm add pi-ws
 Create `server.mjs`:
 
 ```js
-import { PiPipe } from 'pi-ws';
+import { PiWs } from 'pi-ws';
 
-const pipe = new PiPipe({
+const pipe = new PiWs({
   host: '127.0.0.1',
   port: 8787,
 });
@@ -147,7 +147,7 @@ node server.mjs
 The `pi-ws` binary is a thin wrapper around the library:
 
 ```ts
-const pipe = new PiPipe();
+const pipe = new PiWs();
 await pipe.listen();
 ```
 
@@ -202,16 +202,16 @@ pi --mode rpc --no-session
 ```
 
 To use a specific configured LLM provider/model, pass Pi arguments through
-`PI_PIPE_PI_ARGS`:
+`PI_WS_PI_ARGS`:
 
 ```bash
-PI_PIPE_PI_ARGS='["--no-session","--provider","openai","--model","openai/gpt-4.1"]' pnpm demo
+PI_WS_PI_ARGS='["--no-session","--provider","openai","--model","openai/gpt-4.1"]' pnpm demo
 ```
 
 Or use your configured Pi defaults:
 
 ```bash
-PI_PIPE_PI_ARGS='["--no-session"]' pnpm demo
+PI_WS_PI_ARGS='["--no-session"]' pnpm demo
 ```
 
 Optional Pi-only sanity check:
@@ -225,19 +225,83 @@ Type a JSON command such as `{"type":"get_state"}` and press Enter. Exit with
 
 ## Configuration
 
-- `PI_PIPE_HOST` — bind host, default `0.0.0.0`
-- `PI_PIPE_PORT` — bind port, default `8787`
-- `PI_PIPE_WS_PREFIX` — WebSocket prefix, default `/ws`
-- `PI_PIPE_MAX_PAYLOAD_BYTES` — max inbound frame size, default `1048576`
-- `PI_PIPE_PI_COMMAND` — optional pi command override; bundled pi is used by
+- `PI_WS_HOST` — bind host, default `0.0.0.0`
+- `PI_WS_PORT` — bind port, default `8787`
+- `PI_WS_PREFIX` — WebSocket prefix, default `/ws`
+- `PI_WS_MAX_PAYLOAD_BYTES` — max inbound frame size, default `1048576`
+- `PI_WS_PI_COMMAND` — optional pi command override; bundled pi is used by
   default
-- `PI_PIPE_PI_ARGS` — extra pi args after `--mode rpc`; use whitespace
+- `PI_WS_PI_ARGS` — extra pi args after `--mode rpc`; use whitespace
   separated args or a JSON string array
-- `PI_PIPE_PI_CWD` — optional pi subprocess working directory
+- `PI_WS_PI_CWD` — optional pi subprocess working directory
 
 ## Architecture
 
-The built-in route is `/ws/pi`. Additional HTTP or WebSocket handlers can be
-registered by passing `RouteInstaller` implementations to `createPiPipeServer`.
-See [docs/implementation-plan.md](docs/implementation-plan.md) for the option
-review and selected approach.
+`pi-ws` keeps the server surface intentionally small:
+
+- built-in HTTP route: `/healthz`
+- built-in WebSocket route: `/ws/pi`
+- optional built-in static example: `/examples/chat/`
+- user extension points: `handle()`, `route()`, and `use()`
+
+At runtime, each client connected to `/ws/pi` gets a dedicated local Pi
+subprocess running in RPC mode. Incoming WebSocket text frames must be JSON
+objects. `pi-ws` validates them, converts them to JSONL commands, and forwards
+them to Pi over stdin. Pi stdout is read as UTF-8 JSONL, parsed back into JSON
+objects, and sent to the client as WebSocket text frames. Pi stderr and bridge
+lifecycle changes are exposed as `pi_ws_*` events.
+
+Route registration order is:
+
+1. built-in health route
+2. optional built-in chat example routes
+3. built-in Pi RPC websocket route
+4. user HTTP routes added with `handle()`
+5. user WebSocket routes added with `route()`
+6. low-level installers added with `use()`
+7. final catch-all 404 route
+
+```mermaid
+flowchart LR
+    Client[Browser or WS client]
+    Server[pi-ws server]
+    UWS[uWebSockets.js app]
+    Bridge[Pi bridge]
+    Pi[Pi CLI in RPC mode]
+
+    Client -->|WS text JSON to /ws/pi| Server
+    Server --> UWS
+    UWS --> Bridge
+    Bridge -->|stdin JSONL| Pi
+    Pi -->|stdout JSONL| Bridge
+    Bridge -->|WS text JSON| Client
+    Pi -->|stderr and exit| Bridge
+```
+
+Example embedded usage:
+
+```ts
+import { PiWs } from 'pi-ws';
+
+const pipe = new PiWs();
+
+pipe.handle('get', '/api/version', (res) => {
+  res
+    .writeHeader('content-type', 'application/json')
+    .end(JSON.stringify({ version: '1.0.0' }));
+});
+
+pipe.route('/ws/echo', {
+  message(ws, message, isBinary) {
+    ws.send(message, isBinary);
+  },
+});
+
+pipe.use((app) => {
+  app.get('/internal/ping', (res) => {
+    res.end('pong');
+  });
+});
+
+await pipe.listen();
+```

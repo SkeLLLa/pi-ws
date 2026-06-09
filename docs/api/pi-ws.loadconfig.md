@@ -4,12 +4,12 @@
 
 ## loadConfig() function
 
-Loads `PiPipe` configuration from environment variables.
+Loads `PiWs` configuration from environment variables.
 
 **Signature:**
 
 ```typescript
-export declare function loadConfig(env: NodeJS.ProcessEnv): PiPipeConfig;
+export declare function loadConfig(env: NodeJS.ProcessEnv): PiWsConfig;
 ```
 
 ## Parameters
@@ -18,43 +18,36 @@ export declare function loadConfig(env: NodeJS.ProcessEnv): PiPipeConfig;
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 env
 
-
 </td><td>
 
 NodeJS.ProcessEnv
 
-
 </td><td>
 
 Source environment, usually `process.env`<!-- -->.
-
 
 </td></tr>
 </tbody></table>
 
 **Returns:**
 
-[PiPipeConfig](./pi-ws.pipipeconfig.md)
+[PiWsConfig](./pi-ws.piwsconfig.md)
 
 Parsed server configuration with defaults applied.
 
 ## Remarks
 
-Supported variables include `PI_PIPE_HOST`<!-- -->, `PI_PIPE_PORT`<!-- -->, `PI_PIPE_WS_PREFIX`<!-- -->, `PI_PIPE_MAX_PAYLOAD_BYTES`<!-- -->, `PI_PIPE_CHAT_EXAMPLE`<!-- -->, `PI_PIPE_PI_COMMAND`<!-- -->, `PI_PIPE_PI_ARGS`<!-- -->, and `PI_PIPE_PI_CWD`<!-- -->. Values are validated and normalized before being returned.
-
+Supported variables include `PI_WS_HOST`<!-- -->, `PI_WS_PORT`<!-- -->, `PI_WS_PREFIX`<!-- -->, `PI_WS_MAX_PAYLOAD_BYTES`<!-- -->, `PI_WS_CHAT_EXAMPLE`<!-- -->, `PI_WS_PI_COMMAND`<!-- -->, `PI_WS_PI_ARGS`<!-- -->, and `PI_WS_PI_CWD`<!-- -->. Values are validated and normalized before being returned.

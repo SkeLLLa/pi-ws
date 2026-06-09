@@ -36,13 +36,13 @@ export function createPiWebSocketRoute(
         },
         onStderr: (chunk) => {
           sendEvent(ws, {
-            type: 'pi_pipe_stderr',
+            type: 'pi_ws_stderr',
             data: chunk,
           });
         },
         onExit: (code, signal) => {
           sendEvent(ws, {
-            type: 'pi_pipe_exit',
+            type: 'pi_ws_exit',
             code,
             signal,
           });
@@ -53,18 +53,18 @@ export function createPiWebSocketRoute(
         },
         onError: (error) => {
           sendEvent(ws, {
-            type: 'pi_pipe_error',
+            type: 'pi_ws_error',
             message: error.message,
           });
         },
       });
 
-      sendEvent(ws, { type: 'pi_pipe_ready' });
+      sendEvent(ws, { type: 'pi_ws_ready' });
     },
     message(ws, message, isBinary) {
       if (isBinary) {
         sendEvent(ws, {
-          type: 'pi_pipe_error',
+          type: 'pi_ws_error',
           message: 'Binary websocket messages are not supported',
         });
         return;
@@ -77,7 +77,7 @@ export function createPiWebSocketRoute(
         data.peer?.send(parseJsonObject(payload));
       } catch (error) {
         sendEvent(ws, {
-          type: 'pi_pipe_error',
+          type: 'pi_ws_error',
           message:
             error instanceof Error
               ? error.message

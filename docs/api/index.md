@@ -10,25 +10,20 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [pi-ws](./pi-ws.md)
 
-
 </td><td>
 
 Library-first entrypoint for pi-ws.
 
-Use `new PiPipe()` to embed the server programmatically, or use the `pi-ws` binary for the default as-is server.
-
+Use `new PiWs()` to embed the server programmatically, or use the `pi-ws` binary for the default as-is server.
 
 </td></tr>
 </tbody></table>
-

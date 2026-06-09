@@ -90,13 +90,13 @@ function handlePiEvent(event) {
   if (!event || typeof event !== 'object') return;
 
   switch (event.type) {
-    case 'pi_pipe_ready':
+    case 'pi_ws_ready':
       status.textContent = 'Connected. Pi RPC process is ready.';
       break;
-    case 'pi_pipe_error':
+    case 'pi_ws_error':
       appendSystem(`Bridge error: ${event.message}`);
       break;
-    case 'pi_pipe_stderr':
+    case 'pi_ws_stderr':
       appendSystem(`Pi stderr: ${event.data}`);
       break;
     case 'response':

@@ -4,12 +4,12 @@
 
 ## RunningServer interface
 
-Running server handle returned by `PiPipe.listen()`<!-- -->.
+Running server handle returned by `PiWs.listen()`<!-- -->.
 
 **Signature:**
 
 ```typescript
-export interface RunningServer 
+export interface RunningServer
 ```
 
 ## Properties
@@ -18,42 +18,34 @@ export interface RunningServer
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [port](./pi-ws.runningserver.port.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 Actual port the server is listening on.
-
 
 </td></tr>
 </tbody></table>
@@ -64,23 +56,18 @@ Actual port the server is listening on.
 
 Method
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [close()](./pi-ws.runningserver.close.md)
 
-
 </td><td>
 
 Stops the listening socket and closes the underlying app.
 
-
 </td></tr>
 </tbody></table>
-

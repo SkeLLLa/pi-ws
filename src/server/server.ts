@@ -11,8 +11,8 @@ import type {
   HttpHandler,
   HttpMethod,
   HttpRoute,
-  PiPipeConfig,
-  PiPipeListenOptions,
+  PiWsConfig,
+  PiWsListenOptions,
   RouteInstaller,
   RunningServer,
   WebSocketRoute,
@@ -25,15 +25,15 @@ const createUwsApp = App;
  * route and lets callers add their own HTTP and WebSocket handlers.
  *
  * @remarks
- * `PiPipe` always reserves the built-in Pi RPC route at `${wsPrefix}/pi`.
+ * `PiWs` always reserves the built-in Pi RPC route at `${wsPrefix}/pi`.
  * Additional HTTP handlers can be attached with `handle()`, additional
  * WebSocket endpoints can be attached with `route()`, and advanced direct
  * `uWebSockets.js` customization can be attached with `use()`.
  *
  * @public
  */
-export class PiPipe {
-  readonly #config: PiPipeConfig;
+export class PiWs {
+  readonly #config: PiWsConfig;
   readonly #httpRoutes: HttpRoute[] = [];
   readonly #wsRoutes: WebSocketRoute[] = [];
   readonly #installers: RouteInstaller[] = [];
@@ -41,7 +41,7 @@ export class PiPipe {
   #server: RunningServer | undefined;
 
   /**
-   * Creates a new `PiPipe` instance.
+   * Creates a new `PiWs` instance.
    *
    * @remarks
    * The provided config is merged over `loadConfig(process.env)`. This makes
@@ -49,7 +49,7 @@ export class PiPipe {
    *
    * @param config - Optional partial configuration merged over environment defaults.
    */
-  constructor(config: Partial<PiPipeConfig> = {}) {
+  constructor(config: Partial<PiWsConfig> = {}) {
     this.#config = mergeConfig(loadConfig(process.env), config);
   }
 
@@ -63,7 +63,7 @@ export class PiPipe {
    * @param method - HTTP method name as expected by `uWebSockets.js`.
    * @param path - Route path pattern.
    * @param handler - Route callback.
-   * @returns The current `PiPipe` instance.
+   * @returns The current `PiWs` instance.
    */
   handle(method: HttpMethod, path: string, handler: HttpHandler): this {
     this.#httpRoutes.push({ method, path, handler });
@@ -80,7 +80,7 @@ export class PiPipe {
    * @typeParam UserData - `uWebSockets.js` per-socket user data type.
    * @param path - WebSocket route path.
    * @param behavior - Route behavior passed to `app.ws()`.
-   * @returns The current `PiPipe` instance.
+   * @returns The current `PiWs` instance.
    */
   route<UserData = unknown>(
     path: string,
@@ -101,7 +101,7 @@ export class PiPipe {
    * or `route()` are not enough.
    *
    * @param installer - Installer object or callback.
-   * @returns The current `PiPipe` instance.
+   * @returns The current `PiWs` instance.
    */
   use(installer: RouteInstaller | ((app: TemplatedApp) => void)): this {
     this.#installers.push(
@@ -120,7 +120,7 @@ export class PiPipe {
    * @param options - Optional host or port overrides for this listen call.
    * @returns Running server handle.
    */
-  async listen(options: PiPipeListenOptions = {}): Promise<RunningServer> {
+  async listen(options: PiWsListenOptions = {}): Promise<RunningServer> {
     if (this.#server !== undefined) return this.#server;
 
     const config = mergeConfig(this.#config, options);
@@ -184,10 +184,10 @@ export class PiPipe {
 }
 
 /**
- * Convenience factory that creates a `PiPipe`, installs routes, and starts listening.
+ * Convenience factory that creates a `PiWs`, installs routes, and starts listening.
  *
  * @remarks
- * Prefer `new PiPipe()` when you want to keep a reusable instance around.
+ * Prefer `new PiWs()` when you want to keep a reusable instance around.
  * This helper is useful when a one-shot startup function is enough.
  *
  * @param config - Full server configuration.
@@ -195,11 +195,11 @@ export class PiPipe {
  * @returns Running server handle.
  * @public
  */
-export async function createPiPipeServer(
-  config: PiPipeConfig,
+export async function createPiWsServer(
+  config: PiWsConfig,
   installers: readonly RouteInstaller[] = [],
 ): Promise<RunningServer> {
-  const pipe = new PiPipe(config);
+  const pipe = new PiWs(config);
 
   for (const installer of installers) {
     pipe.use(installer);
@@ -209,9 +209,9 @@ export async function createPiPipeServer(
 }
 
 function mergeConfig(
-  base: PiPipeConfig,
-  override: Partial<PiPipeConfig>,
-): PiPipeConfig {
+  base: PiWsConfig,
+  override: Partial<PiWsConfig>,
+): PiWsConfig {
   return {
     ...base,
     ...override,

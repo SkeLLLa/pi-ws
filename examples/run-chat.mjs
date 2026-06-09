@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config as loadDotenv } from 'dotenv';
-import { PiPipe } from '../dist/index.js';
+import { PiWs } from '../dist/index.js';
 
 const providerApiKeyEnv = {
   anthropic: 'ANTHROPIC_API_KEY',
@@ -23,8 +23,8 @@ const root = resolve(import.meta.dirname, '..');
 
 loadEnvFiles(root);
 
-const host = process.env.PI_PIPE_HOST ?? '127.0.0.1';
-const port = Number(process.env.PI_PIPE_PORT ?? '8787');
+const host = process.env.PI_WS_HOST ?? '127.0.0.1';
+const port = Number(process.env.PI_WS_PORT ?? '8787');
 const provider = process.env.PI_PROVIDER ?? 'openai';
 const baseUrl = resolveBaseUrl(provider);
 const model = process.env.PI_MODEL;
@@ -54,7 +54,7 @@ const piArgs = ['--mode', 'rpc', '--no-session', '--session-dir', sessionDir];
 if (provider !== '') piArgs.push('--provider', provider);
 if (model !== undefined && model !== '') piArgs.push('--model', model);
 
-const pipe = new PiPipe({
+const pipe = new PiWs({
   host,
   port,
   pi: {

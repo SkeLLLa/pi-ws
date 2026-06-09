@@ -1,6 +1,6 @@
-import { PiPipe } from '../dist/index.js';
+import { PiWs } from '../dist/index.js';
 
-const pipe = new PiPipe({
+const pipe = new PiWs({
   host: '127.0.0.1',
   port: 8787,
 });

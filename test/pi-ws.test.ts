@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DISABLED } from 'uWebSockets.js';
-import { PiPipe } from '../src/index.js';
+import { PiWs } from '../src/index.js';
 
-void test('PiPipe exposes chainable extension methods', () => {
-  const pipe = new PiPipe({
+void test('PiWs exposes chainable extension methods', () => {
+  const pipe = new PiWs({
     chatExample: false,
   });
 
