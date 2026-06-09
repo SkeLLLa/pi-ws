@@ -103,6 +103,17 @@ Merges additional server configuration into the current instance.
 </td></tr>
 <tr><td>
 
+[configureArtifacts(config)](./pi-ws.piws.configureartifacts.md)
+
+</td><td>
+
+</td><td>
+
+Merges generated artifact transfer settings into the current instance.
+
+</td></tr>
+<tr><td>
+
 [configurePi(config)](./pi-ws.piws.configurepi.md)
 
 </td><td>
@@ -110,6 +121,17 @@ Merges additional server configuration into the current instance.
 </td><td>
 
 Merges additional Pi subprocess settings into the current instance.
+
+</td></tr>
+<tr><td>
+
+[configureSandbox(config)](./pi-ws.piws.configuresandbox.md)
+
+</td><td>
+
+</td><td>
+
+Merges Pi sandbox settings into the current instance.
 
 </td></tr>
 <tr><td>

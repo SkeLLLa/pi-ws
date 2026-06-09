@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import {
   createDefineConfig as createC12DefineConfig,
   loadConfig as loadC12Config,
@@ -7,9 +8,13 @@ import { createStaticTokenAuthHook } from './auth.js';
 import type {
   PiProcessConfig,
   PiProcessOptions,
+  PiWsArtifactConfig,
+  PiWsArtifactOptions,
   PiWsConfig,
   PiWsHooks,
   PiWsOptions,
+  PiWsSandboxConfig,
+  PiWsSandboxOptions,
   PiWsTlsConfig,
 } from './types.js';
 
@@ -17,6 +22,13 @@ const DEFAULT_HOST = '0.0.0.0';
 const DEFAULT_PORT = 8787;
 const DEFAULT_WS_PREFIX = '/ws';
 const DEFAULT_MAX_PAYLOAD_BYTES = 1024 * 1024;
+const DEFAULT_ARTIFACTS_MAX_FILE_BYTES = 25 * 1024 * 1024;
+const DEFAULT_ARTIFACTS_CHUNK_SIZE_BYTES = 256 * 1024;
+const DEFAULT_ARTIFACTS_SCAN_INTERVAL_MS = 500;
+const DEFAULT_ARTIFACTS_STABILITY_WINDOW_MS = 500;
+const DEFAULT_ARTIFACTS_LOG_LEVEL = 'silent';
+const DEFAULT_SANDBOX_MODE = 'off';
+const DEFAULT_SANDBOX_ENV_POLICY = 'minimal';
 
 /**
  * Options for `loadConfig()`.
@@ -127,7 +139,8 @@ export async function loadConfig(
   options: PiWsConfigLoaderOptions = {},
 ): Promise<PiWsConfig> {
   const env = options.env ?? process.env;
-  const resolver = new ConfigResolver({ env });
+  const cwd = options.cwd ?? process.cwd();
+  const resolver = new ConfigResolver({ cwd, env });
   const defaults = resolver.defaults();
   const envOverrides = resolver.loadEnvOverrides();
   const mergedOverrides = resolver.merge({
@@ -157,14 +170,16 @@ export async function loadConfig(
 export function createDefaultConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): PiWsConfig {
-  const resolver = new ConfigResolver({ env });
+  const resolver = new ConfigResolver({ cwd: process.cwd(), env });
   return resolver.resolve(resolver.defaults());
 }
 
 class ConfigResolver {
+  readonly #cwd: string;
   readonly #env: NodeJS.ProcessEnv;
 
-  constructor({ env }: { env: NodeJS.ProcessEnv }) {
+  constructor({ cwd, env }: { cwd: string; env: NodeJS.ProcessEnv }) {
+    this.#cwd = cwd;
     this.#env = env;
   }
 
@@ -179,6 +194,26 @@ class ConfigResolver {
         args: [],
         env: pickPiEnvironment(this.#env),
       },
+      artifacts: {
+        enabled: true,
+        dir: resolve(this.#cwd, '.pi-ws/artifacts'),
+        maxFileBytes: DEFAULT_ARTIFACTS_MAX_FILE_BYTES,
+        chunkSizeBytes: DEFAULT_ARTIFACTS_CHUNK_SIZE_BYTES,
+        scanIntervalMs: DEFAULT_ARTIFACTS_SCAN_INTERVAL_MS,
+        stabilityWindowMs: DEFAULT_ARTIFACTS_STABILITY_WINDOW_MS,
+        logLevel: DEFAULT_ARTIFACTS_LOG_LEVEL,
+      },
+      sandbox: {
+        mode: DEFAULT_SANDBOX_MODE,
+        cwd: resolve(this.#cwd, '.pi-ws/sandbox'),
+        allowReadDirs: [],
+        allowWriteDirs: [],
+        envPolicy: DEFAULT_SANDBOX_ENV_POLICY,
+        envAllowlist: [],
+        env: {},
+        denyServerDirectory: true,
+        args: [],
+      },
     };
   }
 
@@ -187,6 +222,8 @@ class ConfigResolver {
     const tls = loadTlsConfig(env);
     const piHooks = loadPiHooks(env);
     const pi = loadPiOptions(env);
+    const artifacts = loadArtifactOptions(env, this.#cwd);
+    const sandbox = loadSandboxOptions(env, this.#cwd);
 
     return {
       ...optionalValue(optionalNonEmpty(env['PI_WS_HOST']), 'host'),
@@ -205,6 +242,8 @@ class ConfigResolver {
       ),
       ...optionalValue(tls, 'tls'),
       ...optionalValue(piHooks, 'piHooks'),
+      ...(isArtifactOptionsEmpty(artifacts) ? {} : { artifacts }),
+      ...(isSandboxOptionsEmpty(sandbox) ? {} : { sandbox }),
       ...(isPiOptionsEmpty(pi) ? {} : { pi }),
     };
   }
@@ -217,6 +256,8 @@ class ConfigResolver {
       maxPayloadBytes: config.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES,
       ...(config.tls === undefined ? {} : { tls: config.tls }),
       pi: resolvePiConfig(this.#env, config.pi),
+      artifacts: resolveArtifactConfig(this.#cwd, config.artifacts),
+      sandbox: resolveSandboxConfig(this.#cwd, config.sandbox),
       ...(config.piHooks === undefined ? {} : { piHooks: config.piHooks }),
       chatExample: config.chatExample ?? true,
     };
@@ -235,6 +276,8 @@ class ConfigResolver {
       ...base,
       ...override,
       ...(pi === undefined ? {} : { pi }),
+      ...mergeOptionalObject(base, override, 'artifacts'),
+      ...mergeOptionalObject(base, override, 'sandbox'),
       ...mergeOptionalObject(base, override, 'tls'),
       ...mergeOptionalObject(base, override, 'piHooks'),
     };
@@ -286,6 +329,100 @@ function loadPiOptions(env: NodeJS.ProcessEnv): PiProcessOptions {
       'promptTemplates',
     ),
     env: pickPiEnvironment(env),
+  };
+}
+
+function loadArtifactOptions(
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+): PiWsArtifactOptions {
+  return {
+    ...optionalValue(
+      parseBoolean(env['PI_WS_ARTIFACTS_ENABLED'], 'PI_WS_ARTIFACTS_ENABLED'),
+      'enabled',
+    ),
+    ...optionalValue(
+      resolveOptionalPath(env['PI_WS_ARTIFACTS_DIR'], cwd),
+      'dir',
+    ),
+    ...optionalValue(
+      parsePositiveInteger(
+        env['PI_WS_ARTIFACTS_MAX_FILE_BYTES'],
+        'PI_WS_ARTIFACTS_MAX_FILE_BYTES',
+      ),
+      'maxFileBytes',
+    ),
+    ...optionalValue(
+      parsePositiveInteger(
+        env['PI_WS_ARTIFACTS_CHUNK_SIZE_BYTES'],
+        'PI_WS_ARTIFACTS_CHUNK_SIZE_BYTES',
+      ),
+      'chunkSizeBytes',
+    ),
+    ...optionalValue(
+      parsePositiveInteger(
+        env['PI_WS_ARTIFACTS_SCAN_INTERVAL_MS'],
+        'PI_WS_ARTIFACTS_SCAN_INTERVAL_MS',
+      ),
+      'scanIntervalMs',
+    ),
+    ...optionalValue(
+      parsePositiveInteger(
+        env['PI_WS_ARTIFACTS_STABILITY_WINDOW_MS'],
+        'PI_WS_ARTIFACTS_STABILITY_WINDOW_MS',
+      ),
+      'stabilityWindowMs',
+    ),
+    ...optionalValue(
+      parseLogLevel(env['PI_WS_ARTIFACTS_LOG_LEVEL']),
+      'logLevel',
+    ),
+    ...optionalValue(
+      resolveOptionalPath(env['PI_WS_ARTIFACTS_LOG_FILE'], cwd),
+      'logFile',
+    ),
+  };
+}
+
+function loadSandboxOptions(
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+): PiWsSandboxOptions {
+  return {
+    ...optionalValue(parseSandboxMode(env['PI_WS_SANDBOX_MODE']), 'mode'),
+    ...optionalValue(resolveOptionalPath(env['PI_WS_SANDBOX_CWD'], cwd), 'cwd'),
+    ...optionalValue(
+      parsePathList(env['PI_WS_SANDBOX_ALLOW_READ_DIRS'], cwd),
+      'allowReadDirs',
+    ),
+    ...optionalValue(
+      parsePathList(env['PI_WS_SANDBOX_ALLOW_WRITE_DIRS'], cwd),
+      'allowWriteDirs',
+    ),
+    ...optionalValue(
+      parseSandboxEnvPolicy(env['PI_WS_SANDBOX_ENV_POLICY']),
+      'envPolicy',
+    ),
+    ...optionalValue(
+      parseStringList(
+        env['PI_WS_SANDBOX_ENV_ALLOWLIST'],
+        'PI_WS_SANDBOX_ENV_ALLOWLIST',
+      ),
+      'envAllowlist',
+    ),
+    ...optionalValue(
+      parseStringRecord(env['PI_WS_SANDBOX_ENV'], 'PI_WS_SANDBOX_ENV'),
+      'env',
+    ),
+    ...optionalValue(
+      parseBoolean(
+        env['PI_WS_SANDBOX_DENY_SERVER_DIRECTORY'],
+        'PI_WS_SANDBOX_DENY_SERVER_DIRECTORY',
+      ),
+      'denyServerDirectory',
+    ),
+    ...optionalValue(optionalNonEmpty(env['PI_WS_SANDBOX_COMMAND']), 'command'),
+    ...optionalValue(parseArgs(env['PI_WS_SANDBOX_ARGS']), 'args'),
   };
 }
 
@@ -369,6 +506,52 @@ function resolvePiConfig(
   };
 }
 
+function resolveArtifactConfig(
+  cwd: string,
+  config: PiWsArtifactOptions | undefined,
+): PiWsArtifactConfig {
+  return {
+    enabled: config?.enabled ?? true,
+    dir: resolvePath(config?.dir ?? '.pi-ws/artifacts', cwd),
+    maxFileBytes: config?.maxFileBytes ?? DEFAULT_ARTIFACTS_MAX_FILE_BYTES,
+    chunkSizeBytes:
+      config?.chunkSizeBytes ?? DEFAULT_ARTIFACTS_CHUNK_SIZE_BYTES,
+    scanIntervalMs:
+      config?.scanIntervalMs ?? DEFAULT_ARTIFACTS_SCAN_INTERVAL_MS,
+    stabilityWindowMs:
+      config?.stabilityWindowMs ?? DEFAULT_ARTIFACTS_STABILITY_WINDOW_MS,
+    logLevel: config?.logLevel ?? DEFAULT_ARTIFACTS_LOG_LEVEL,
+    ...optionalValue(
+      config?.logFile === undefined
+        ? undefined
+        : resolvePath(config.logFile, cwd),
+      'logFile',
+    ),
+  };
+}
+
+function resolveSandboxConfig(
+  cwd: string,
+  config: PiWsSandboxOptions | undefined,
+): PiWsSandboxConfig {
+  return {
+    mode: config?.mode ?? DEFAULT_SANDBOX_MODE,
+    cwd: resolvePath(config?.cwd ?? '.pi-ws/sandbox', cwd),
+    allowReadDirs: (config?.allowReadDirs ?? []).map((entry) =>
+      resolvePath(entry, cwd),
+    ),
+    allowWriteDirs: (config?.allowWriteDirs ?? []).map((entry) =>
+      resolvePath(entry, cwd),
+    ),
+    envPolicy: config?.envPolicy ?? DEFAULT_SANDBOX_ENV_POLICY,
+    envAllowlist: config?.envAllowlist ?? [],
+    env: config?.env ?? {},
+    denyServerDirectory: config?.denyServerDirectory ?? true,
+    ...optionalValue(config?.command, 'command'),
+    args: config?.args ?? [],
+  };
+}
+
 function mergePiOptions(
   base: PiProcessOptions | undefined,
   override: PiProcessOptions | undefined,
@@ -389,7 +572,7 @@ function mergePiOptions(
 }
 
 function mergeOptionalObject<
-  Key extends 'tls' | 'piHooks',
+  Key extends 'artifacts' | 'piHooks' | 'sandbox' | 'tls',
   Value extends PiWsOptions[Key],
 >(
   base: PiWsOptions,
@@ -464,6 +647,14 @@ function parseArgs(value: string | undefined): readonly string[] | undefined {
   return trimmed.split(/\s+/u);
 }
 
+function parsePathList(
+  value: string | undefined,
+  cwd: string,
+): readonly string[] | undefined {
+  const parsed = parseStringList(value, 'path list');
+  return parsed?.map((entry) => resolvePath(entry, cwd));
+}
+
 function parseStringList(
   value: string | undefined,
   name: string,
@@ -490,6 +681,95 @@ function parseStringArrayJson(value: string, name: string): readonly string[] {
   return parsed as string[];
 }
 
+function parseStringRecord(
+  value: string | undefined,
+  name: string,
+): Readonly<Record<string, string>> | undefined {
+  if (value === undefined || value.trim() === '') return undefined;
+
+  const parsed: unknown = JSON.parse(value);
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    Array.isArray(parsed) ||
+    Object.entries(parsed).some(
+      (entry) => typeof entry[0] !== 'string' || typeof entry[1] !== 'string',
+    )
+  ) {
+    throw new Error(`${name} JSON value must be an object of strings`);
+  }
+
+  return parsed as Readonly<Record<string, string>>;
+}
+
+function parseSandboxMode(
+  value: string | undefined,
+): PiWsSandboxConfig['mode'] | undefined {
+  if (value === undefined || value.trim() === '') return undefined;
+
+  const trimmed = value.trim();
+  switch (trimmed) {
+    case 'off':
+      return 'off';
+    case 'process':
+      return 'process';
+    case 'system':
+      return 'system';
+    default:
+      throw new Error(
+        'PI_WS_SANDBOX_MODE must be one of: off, process, system',
+      );
+  }
+}
+
+function parseSandboxEnvPolicy(
+  value: string | undefined,
+): PiWsSandboxConfig['envPolicy'] | undefined {
+  if (value === undefined || value.trim() === '') return undefined;
+
+  const trimmed = value.trim();
+  switch (trimmed) {
+    case 'inherit':
+      return 'inherit';
+    case 'minimal':
+      return 'minimal';
+    case 'allowlist':
+      return 'allowlist';
+    default:
+      throw new Error(
+        'PI_WS_SANDBOX_ENV_POLICY must be one of: inherit, minimal, allowlist',
+      );
+  }
+}
+
+function parseLogLevel(
+  value: string | undefined,
+): PiWsArtifactConfig['logLevel'] | undefined {
+  if (value === undefined || value.trim() === '') return undefined;
+
+  const trimmed = value.trim();
+  switch (trimmed) {
+    case 'trace':
+      return 'trace';
+    case 'debug':
+      return 'debug';
+    case 'info':
+      return 'info';
+    case 'warn':
+      return 'warn';
+    case 'error':
+      return 'error';
+    case 'fatal':
+      return 'fatal';
+    case 'silent':
+      return 'silent';
+    default:
+      throw new Error(
+        'PI_WS_ARTIFACTS_LOG_LEVEL must be one of: trace, debug, info, warn, error, fatal, silent',
+      );
+  }
+}
+
 function pickPiEnvironment(
   env: NodeJS.ProcessEnv,
 ): Readonly<Record<string, string>> {
@@ -498,6 +778,18 @@ function pickPiEnvironment(
       (entry): entry is [string, string] => entry[1] !== undefined,
     ),
   );
+}
+
+function resolveOptionalPath(
+  value: string | undefined,
+  cwd: string,
+): string | undefined {
+  const normalized = optionalNonEmpty(value);
+  return normalized === undefined ? undefined : resolvePath(normalized, cwd);
+}
+
+function resolvePath(value: string, cwd: string): string {
+  return resolve(cwd, value);
 }
 
 function optionalNonEmpty(value: string | undefined): string | undefined {
@@ -513,6 +805,14 @@ function optionalValue<Key extends string, Value>(
   return { [key]: value } as Partial<Record<Key, Value>>;
 }
 
+function isArtifactOptionsEmpty(config: PiWsArtifactOptions): boolean {
+  return Object.keys(config).length === 0;
+}
+
 function isPiOptionsEmpty(config: PiProcessOptions): boolean {
   return Object.keys(config).length === 1 && config.env !== undefined;
+}
+
+function isSandboxOptionsEmpty(config: PiWsSandboxOptions): boolean {
+  return Object.keys(config).length === 0;
 }

@@ -8,53 +8,54 @@
   </head>
   <body>
     <main class="shell">
-      <section class="hero">
-        <p class="eyebrow">pi-ws example</p>
-        <h1>Chat with a local Pi agent over WebSocket</h1>
-        <p>
-          This page sends Pi RPC <code>prompt</code> commands to
-          <code>/ws/pi</code> and renders streaming assistant text events.
-        </p>
-      </section>
-
-      <section class="panel connection-panel">
-        <label for="ws-url">WebSocket URL</label>
-        <div class="connection-row">
-          <input id="ws-url" name="ws-url" type="url" />
-          <button id="connect" type="button">Connect</button>
+      <header class="header panel">
+        <div class="brand">
+          <span class="eyebrow">pi-ws</span>
+          <h1>Chat</h1>
         </div>
-        <label for="auth-token">Auth token</label>
-        <div class="connection-row">
-          <input
-            id="auth-token"
-            name="auth-token"
-            type="password"
-            placeholder="Optional. Used when the server requires onAuth."
-          />
-          <button id="authenticate" type="button">Authenticate</button>
+        <div class="connection-panel">
+          <div class="connection-row">
+            <label for="ws-url">URL</label>
+            <input id="ws-url" name="ws-url" type="url" />
+            <button id="connect" type="button">Connect</button>
+            <label for="auth-token">Token</label>
+            <input
+              id="auth-token"
+              name="auth-token"
+              type="password"
+              placeholder="Optional"
+              class="token-input"
+            />
+            <button id="authenticate" type="button">Auth</button>
+            <p id="status" class="status">Disconnected</p>
+          </div>
+          <div id="session-info" class="session-info" hidden></div>
         </div>
-        <p id="status" class="status">Disconnected</p>
-      </section>
+      </header>
 
-      <section id="messages" class="messages" aria-live="polite"></section>
+      <div class="workspace">
+        <div class="chat">
+          <section id="messages" class="messages" aria-live="polite"></section>
 
-      <form id="composer" class="composer">
-        <textarea
-          id="prompt"
-          name="prompt"
-          rows="3"
-          placeholder="Ask Pi to explain this repository, write code, or inspect files..."
-        ></textarea>
-        <div class="composer-actions">
-          <button id="abort" type="button">Abort</button>
-          <button id="send" type="submit">Send</button>
+          <form id="composer" class="composer">
+            <textarea
+              id="prompt"
+              name="prompt"
+              rows="3"
+              placeholder="Ask Pi to explain this repository, write code, or generate a graph and save it as a PNG artifact..."
+            ></textarea>
+            <div class="composer-actions">
+              <button id="abort" type="button">Abort</button>
+              <button id="send" type="submit">Send</button>
+            </div>
+          </form>
         </div>
-      </form>
 
-      <details class="panel event-log">
-        <summary>Raw events</summary>
-        <pre id="events"></pre>
-      </details>
+        <section class="panel event-log">
+          <p class="event-log-heading">Raw events</p>
+          <pre id="events"></pre>
+        </section>
+      </div>
     </main>
 
     <script type="module" src="./main.js"></script>

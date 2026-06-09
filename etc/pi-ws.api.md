@@ -4,6 +4,7 @@
 
 ```ts
 import { ConfigLayerMeta, DefineConfig, DotenvOptions } from 'c12';
+import type { LevelWithSilent } from 'pino';
 import {
   TemplatedApp,
   type AppOptions,
@@ -171,7 +172,9 @@ export class PiWs<Session = unknown> {
   addHook(name: 'onAuth', hook: AuthHook<Session>): this;
   close(): void;
   configure(config: PiWsOptions<Session>): this;
+  configureArtifacts(config: PiWsArtifactOptions): this;
   configurePi(config: PiProcessOptions): this;
+  configureSandbox(config: PiWsSandboxOptions): this;
   configureTls(config: PiWsConfig['tls']): this;
   createApp(): TemplatedApp;
   disableTls(): this;
@@ -191,13 +194,39 @@ export class PiWs<Session = unknown> {
 }
 
 // @public
+export interface PiWsArtifactConfig {
+  readonly chunkSizeBytes: number;
+  readonly dir: string;
+  readonly enabled: boolean;
+  readonly logFile?: string;
+  readonly logLevel: LevelWithSilent;
+  readonly maxFileBytes: number;
+  readonly scanIntervalMs: number;
+  readonly stabilityWindowMs: number;
+}
+
+// @public
+export interface PiWsArtifactOptions {
+  readonly chunkSizeBytes?: number;
+  readonly dir?: string;
+  readonly enabled?: boolean;
+  readonly logFile?: string;
+  readonly logLevel?: LevelWithSilent;
+  readonly maxFileBytes?: number;
+  readonly scanIntervalMs?: number;
+  readonly stabilityWindowMs?: number;
+}
+
+// @public
 export interface PiWsConfig<Session = unknown> {
+  readonly artifacts: PiWsArtifactConfig;
   readonly chatExample: boolean;
   readonly host: string;
   readonly maxPayloadBytes: number;
   readonly pi: PiProcessConfig;
   readonly piHooks?: PiWsHooks<Session>;
   readonly port: number;
+  readonly sandbox: PiWsSandboxConfig;
   readonly tls?: PiWsTlsConfig;
   readonly wsPrefix: string;
 }
@@ -232,14 +261,50 @@ export interface PiWsListenOptions {
 
 // @public
 export interface PiWsOptions<Session = unknown> {
+  readonly artifacts?: PiWsArtifactOptions;
   readonly chatExample?: boolean;
   readonly host?: string;
   readonly maxPayloadBytes?: number;
   readonly pi?: PiProcessOptions;
   readonly piHooks?: PiWsHooks<Session>;
   readonly port?: number;
+  readonly sandbox?: PiWsSandboxOptions;
   readonly tls?: PiWsTlsConfig;
   readonly wsPrefix?: string;
+}
+
+// @public
+export interface PiWsSandboxConfig {
+  readonly allowReadDirs: readonly string[];
+  readonly allowWriteDirs: readonly string[];
+  readonly args: readonly string[];
+  readonly command?: string;
+  readonly cwd: string;
+  readonly denyServerDirectory: boolean;
+  readonly env: Readonly<Record<string, string>>;
+  readonly envAllowlist: readonly string[];
+  readonly envPolicy: PiWsSandboxEnvPolicy;
+  readonly mode: PiWsSandboxMode;
+}
+
+// @public
+export type PiWsSandboxEnvPolicy = 'inherit' | 'minimal' | 'allowlist';
+
+// @public
+export type PiWsSandboxMode = 'off' | 'process' | 'system';
+
+// @public
+export interface PiWsSandboxOptions {
+  readonly allowReadDirs?: readonly string[];
+  readonly allowWriteDirs?: readonly string[];
+  readonly args?: readonly string[];
+  readonly command?: string;
+  readonly cwd?: string;
+  readonly denyServerDirectory?: boolean;
+  readonly env?: Readonly<Record<string, string>>;
+  readonly envAllowlist?: readonly string[];
+  readonly envPolicy?: PiWsSandboxEnvPolicy;
+  readonly mode?: PiWsSandboxMode;
 }
 
 // @public

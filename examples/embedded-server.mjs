@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import {
   createStaticTokenAuthHook,
   PiWs,
@@ -7,10 +8,30 @@ import {
 
 const authToken = process.env.PI_WS_AUTH_TOKEN;
 const authQueryParam = process.env.PI_WS_AUTH_QUERY_PARAM ?? 'token';
+const root = resolve(import.meta.dirname, '..');
+const artifactDir =
+  process.env.PI_WS_ARTIFACTS_DIR ??
+  resolve(root, '.tmp/pi-ws-example/artifacts');
+const artifactLogFile =
+  process.env.PI_WS_ARTIFACTS_LOG_FILE ??
+  resolve(root, '.tmp/pi-ws-example/pi-ws.log');
+const sandboxDir =
+  process.env.PI_WS_SANDBOX_CWD ?? resolve(root, '.tmp/pi-ws-example/sandbox');
 
 const pipe = new PiWs({
+  artifacts: {
+    dir: artifactDir,
+    logFile: artifactLogFile,
+    logLevel: process.env.PI_WS_ARTIFACTS_LOG_LEVEL ?? 'info',
+  },
   host: '127.0.0.1',
   port: 8787,
+  sandbox: {
+    cwd: sandboxDir,
+    denyServerDirectory: true,
+    envPolicy: process.env.PI_WS_SANDBOX_ENV_POLICY ?? 'minimal',
+    mode: process.env.PI_WS_SANDBOX_MODE ?? 'process',
+  },
 });
 
 if (authToken !== undefined && authToken !== '') {
@@ -72,6 +93,9 @@ console.log(`pi rpc websocket: ws://127.0.0.1:${String(server.port)}/ws/pi`);
 console.log(
   `chat example: http://127.0.0.1:${String(server.port)}/examples/chat/`,
 );
+console.log(`artifact dir: ${artifactDir}`);
+console.log(`artifact log: ${artifactLogFile}`);
+console.log(`sandbox dir: ${sandboxDir}`);
 if (authToken !== undefined && authToken !== '') {
   console.log(`auth: enabled with PI_WS_AUTH_TOKEN`);
   console.log(

@@ -106,6 +106,13 @@ The page connects to:
 ws://127.0.0.1:8787/ws/pi
 ```
 
+The example also supports binary artifact previews. A natural prompt like
+`draw a graph of pirate counts by century` should produce a preview card in the
+UI because the bridge tells the agent to turn visual/file output into artifact
+files. Images, audio, video, PDFs, text files, and CSV tables are displayed
+inline. Every artifact also gets a blob URL download link, including
+non-displayable binary files.
+
 Optional auth for the built-in Pi route:
 
 ```bash
@@ -126,6 +133,49 @@ reserved first websocket message:
 
 The chat page exposes an **Auth token** field and automatically sends that
 message after `pi_ws_auth_required`.
+
+## Artifacts, Logs, And Sandbox
+
+The example launcher enables artifact transfer and process sandboxing by
+default. Each websocket connection gets a short session id, shown in the chat
+header after connection. Use that id to find the matching artifact and sandbox
+directories.
+
+Default paths:
+
+| Purpose           | Default path                   |
+| ----------------- | ------------------------------ |
+| Artifact root     | `.tmp/pi-ws-example/artifacts` |
+| Sandbox root      | `.tmp/pi-ws-example/sandbox`   |
+| Session directory | `.tmp/pi-ws-example/sessions`  |
+| Pino log file     | `.tmp/pi-ws-example/pi-ws.log` |
+
+Each connection creates a per-session sandbox root under the sandbox root. The
+agent receives cwd, `HOME`, and `TMPDIR` paths inside that session root. Tool
+caches, package-manager state, and temporary files should stay under those
+generic sandbox locations or the artifact directory.
+
+Useful overrides:
+
+| Variable                         | Meaning                                                       |
+| -------------------------------- | ------------------------------------------------------------- |
+| `PI_WS_ARTIFACTS_DIR`            | Artifact root directory                                       |
+| `PI_WS_ARTIFACTS_LOG_LEVEL`      | Pino log level for artifact and sandbox events                |
+| `PI_WS_ARTIFACTS_LOG_FILE`       | Pino log destination                                          |
+| `PI_WS_SANDBOX_MODE`             | `off`, `process`, or `system`                                 |
+| `PI_WS_SANDBOX_CWD`              | Root directory for per-connection sandbox working directories |
+| `PI_WS_SANDBOX_ENV_POLICY`       | `inherit`, `minimal`, or `allowlist`                          |
+| `PI_WS_SANDBOX_ALLOW_READ_DIRS`  | JSON string array of readable directories                     |
+| `PI_WS_SANDBOX_ALLOW_WRITE_DIRS` | JSON string array of writable directories                     |
+
+To watch the debug output while exercising artifact generation:
+
+```bash
+tail -f .tmp/pi-ws-example/pi-ws.log
+```
+
+For a step-by-step artifact debugging prompt sequence, see
+`.tmp/artifact-debug-session-plan.md` in this repository.
 
 ### Using Anthropic
 

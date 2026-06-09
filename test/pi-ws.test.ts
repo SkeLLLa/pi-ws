@@ -61,6 +61,18 @@ void test('PiWs exposes chainable extension methods', () => {
     }),
     pipe,
   );
+  assert.equal(
+    pipe.configureArtifacts({
+      logLevel: 'debug',
+    }),
+    pipe,
+  );
+  assert.equal(
+    pipe.configureSandbox({
+      mode: 'process',
+    }),
+    pipe,
+  );
   assert.equal(pipe.setChatExample(false), pipe);
   assert.doesNotThrow(() => pipe.createApp());
 });
@@ -71,10 +83,18 @@ void test('PiWs exposes composable configuration helpers', () => {
       host: '127.0.0.1',
       port: 9999,
     })
+    .configureArtifacts({
+      dir: '/tmp/artifacts',
+      logLevel: 'info',
+    })
     .configurePi({
       provider: 'openai',
       model: 'gpt-5',
       systemPrompt: 'Be strict.',
+    })
+    .configureSandbox({
+      cwd: '/tmp/sandbox',
+      mode: 'process',
     })
     .setChatExample(false);
 
@@ -83,9 +103,13 @@ void test('PiWs exposes composable configuration helpers', () => {
   assert.equal(config.host, '127.0.0.1');
   assert.equal(config.port, 9999);
   assert.equal(config.chatExample, false);
+  assert.equal(config.artifacts.dir, '/tmp/artifacts');
+  assert.equal(config.artifacts.logLevel, 'info');
   assert.equal(config.pi.provider, 'openai');
   assert.equal(config.pi.model, 'gpt-5');
   assert.equal(config.pi.systemPrompt, 'Be strict.');
+  assert.equal(config.sandbox.cwd, '/tmp/sandbox');
+  assert.equal(config.sandbox.mode, 'process');
 });
 
 void test('PiWs stores typed built-in route hooks in config', () => {

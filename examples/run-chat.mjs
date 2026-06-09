@@ -30,6 +30,15 @@ const baseUrl = resolveBaseUrl(provider);
 const model = process.env.PI_MODEL;
 const authToken = process.env.PI_WS_AUTH_TOKEN;
 const authQueryParam = process.env.PI_WS_AUTH_QUERY_PARAM ?? 'token';
+const artifactDir =
+  process.env.PI_WS_ARTIFACTS_DIR ??
+  resolve(root, '.tmp/pi-ws-example/artifacts');
+const artifactLogFile =
+  process.env.PI_WS_ARTIFACTS_LOG_FILE ??
+  resolve(root, '.tmp/pi-ws-example/pi-ws.log');
+const sandboxDir =
+  process.env.PI_WS_SANDBOX_CWD ?? resolve(root, '.tmp/pi-ws-example/sandbox');
+const sandboxMode = process.env.PI_WS_SANDBOX_MODE ?? 'process';
 const sessionDir =
   process.env.PI_CODING_AGENT_SESSION_DIR ??
   resolve(root, '.tmp/pi-ws-example/sessions');
@@ -57,13 +66,26 @@ if (provider !== '') piArgs.push('--provider', provider);
 if (model !== undefined && model !== '') piArgs.push('--model', model);
 
 const pipe = new PiWs({
+  artifacts: {
+    dir: artifactDir,
+    logFile: artifactLogFile,
+    logLevel: process.env.PI_WS_ARTIFACTS_LOG_LEVEL ?? 'info',
+  },
   host,
   port,
   pi: {
+    agentDir: process.env.PI_CODING_AGENT_DIR,
     args: piArgs,
     env: Object.fromEntries(
       Object.entries(process.env).filter((entry) => entry[1] !== undefined),
     ),
+  },
+  sandbox: {
+    allowWriteDirs: [sessionDir],
+    cwd: sandboxDir,
+    denyServerDirectory: true,
+    envPolicy: process.env.PI_WS_SANDBOX_ENV_POLICY ?? 'minimal',
+    mode: sandboxMode,
   },
 });
 
@@ -89,6 +111,10 @@ console.log(
 console.log(`pi rpc websocket: ws://${host}:${String(server.port)}/ws/pi`);
 console.log(`provider: ${provider}`);
 console.log(`model: ${model ?? '(Pi default for provider)'}`);
+console.log(`artifact dir: ${artifactDir}`);
+console.log(`artifact log: ${artifactLogFile}`);
+console.log(`sandbox mode: ${sandboxMode}`);
+console.log(`sandbox dir: ${sandboxDir}`);
 if (authToken !== undefined && authToken !== '') {
   console.log(`auth: enabled with PI_WS_AUTH_TOKEN`);
   console.log(
@@ -102,6 +128,7 @@ if (baseUrl !== undefined && baseUrl !== '') {
   console.log(`base url: ${baseUrl}`);
   console.log(`pi config dir: ${process.env.PI_CODING_AGENT_DIR}`);
 }
+console.log(`try a prompt like: draw a graph of pirate counts by century`);
 
 const stop = () => {
   pipe.close();

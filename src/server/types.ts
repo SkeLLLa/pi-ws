@@ -1,3 +1,4 @@
+import type { LevelWithSilent } from 'pino';
 import type {
   AppOptions,
   HttpRequest,
@@ -491,6 +492,220 @@ export interface PiProcessOptions {
 }
 
 /**
+ * Generated artifact transfer settings for the built-in Pi WebSocket route.
+ *
+ * @remarks
+ * When enabled, `pi-ws` creates a per-connection artifact directory, tells Pi
+ * to write generated files there, and forwards stable files to the websocket
+ * client as metadata text frames plus binary frames.
+ *
+ * @public
+ */
+export interface PiWsArtifactConfig {
+  /**
+   * Enables artifact discovery and websocket transfer.
+   */
+  readonly enabled: boolean;
+  /**
+   * Root directory that stores per-connection artifact subdirectories.
+   */
+  readonly dir: string;
+  /**
+   * Maximum file size accepted for websocket transfer.
+   */
+  readonly maxFileBytes: number;
+  /**
+   * Binary chunk size used when a file is transferred in multiple frames.
+   */
+  readonly chunkSizeBytes: number;
+  /**
+   * Poll interval for discovering newly created files.
+   */
+  readonly scanIntervalMs: number;
+  /**
+   * Minimum unchanged time before a discovered file is considered complete.
+   */
+  readonly stabilityWindowMs: number;
+  /**
+   * Pino log level used for artifact and sandbox diagnostics.
+   *
+   * @defaultValue `"silent"`
+   */
+  readonly logLevel: LevelWithSilent;
+  /**
+   * Optional pino log destination file path.
+   */
+  readonly logFile?: string;
+}
+
+/**
+ * Partial artifact configuration accepted from callers and config files.
+ *
+ * @public
+ */
+export interface PiWsArtifactOptions {
+  /**
+   * Enables artifact discovery and websocket transfer.
+   */
+  readonly enabled?: boolean;
+  /**
+   * Root directory that stores per-connection artifact subdirectories.
+   */
+  readonly dir?: string;
+  /**
+   * Maximum file size accepted for websocket transfer.
+   */
+  readonly maxFileBytes?: number;
+  /**
+   * Binary chunk size used when a file is transferred in multiple frames.
+   */
+  readonly chunkSizeBytes?: number;
+  /**
+   * Poll interval for discovering newly created files.
+   */
+  readonly scanIntervalMs?: number;
+  /**
+   * Minimum unchanged time before a discovered file is considered complete.
+   */
+  readonly stabilityWindowMs?: number;
+  /**
+   * Pino log level used for artifact and sandbox diagnostics.
+   */
+  readonly logLevel?: LevelWithSilent;
+  /**
+   * Optional pino log destination file path.
+   */
+  readonly logFile?: string;
+}
+
+/**
+ * Supported Pi sandbox modes.
+ *
+ * @remarks
+ * `process` isolates cwd and environment only. `system` delegates process
+ * isolation to an external wrapper command such as `bwrap` or `firejail`.
+ *
+ * @public
+ */
+export type PiWsSandboxMode = 'off' | 'process' | 'system';
+
+/**
+ * Environment inheritance policy for the Pi subprocess.
+ *
+ * @public
+ */
+export type PiWsSandboxEnvPolicy = 'inherit' | 'minimal' | 'allowlist';
+
+/**
+ * Pi subprocess isolation settings.
+ *
+ * @remarks
+ * `process` mode does not enforce filesystem access restrictions by itself.
+ * It only isolates cwd, HOME, TMPDIR, and the forwarded environment. Use
+ * `system` mode with an external wrapper command when you need OS-enforced
+ * directory isolation.
+ *
+ * @public
+ */
+export interface PiWsSandboxConfig {
+  /**
+   * Sandbox strategy for spawned Pi subprocesses.
+   */
+  readonly mode: PiWsSandboxMode;
+  /**
+   * Root directory that stores per-connection sandbox work directories.
+   */
+  readonly cwd: string;
+  /**
+   * Read-only directory allowlist communicated to Pi and wrapper commands.
+   */
+  readonly allowReadDirs: readonly string[];
+  /**
+   * Writable directory allowlist communicated to Pi and wrapper commands.
+   */
+  readonly allowWriteDirs: readonly string[];
+  /**
+   * Policy used to build the spawned Pi process environment.
+   */
+  readonly envPolicy: PiWsSandboxEnvPolicy;
+  /**
+   * Environment variable names copied from the configured Pi environment when
+   * `envPolicy` is `"allowlist"` or to augment `"minimal"`.
+   */
+  readonly envAllowlist: readonly string[];
+  /**
+   * Extra environment variables injected after the base environment is built.
+   */
+  readonly env: Readonly<Record<string, string>>;
+  /**
+   * Rejects sandbox cwd values that point into the current server workspace.
+   */
+  readonly denyServerDirectory: boolean;
+  /**
+   * Optional external sandbox wrapper command for `system` mode.
+   */
+  readonly command?: string;
+  /**
+   * Optional external sandbox wrapper arguments for `system` mode.
+   *
+   * @remarks
+   * `pi-ws` appends the resolved Pi command and arguments after these values.
+   * Supported placeholders include `{artifactDir}`, `{sandboxCwd}`,
+   * `{sandboxHome}`, and `{sessionRoot}`.
+   */
+  readonly args: readonly string[];
+}
+
+/**
+ * Partial Pi sandbox configuration accepted from callers and config files.
+ *
+ * @public
+ */
+export interface PiWsSandboxOptions {
+  /**
+   * Sandbox strategy for spawned Pi subprocesses.
+   */
+  readonly mode?: PiWsSandboxMode;
+  /**
+   * Root directory that stores per-connection sandbox work directories.
+   */
+  readonly cwd?: string;
+  /**
+   * Read-only directory allowlist communicated to Pi and wrapper commands.
+   */
+  readonly allowReadDirs?: readonly string[];
+  /**
+   * Writable directory allowlist communicated to Pi and wrapper commands.
+   */
+  readonly allowWriteDirs?: readonly string[];
+  /**
+   * Policy used to build the spawned Pi process environment.
+   */
+  readonly envPolicy?: PiWsSandboxEnvPolicy;
+  /**
+   * Environment variable names copied from the configured Pi environment when
+   * `envPolicy` is `"allowlist"` or to augment `"minimal"`.
+   */
+  readonly envAllowlist?: readonly string[];
+  /**
+   * Extra environment variables injected after the base environment is built.
+   */
+  readonly env?: Readonly<Record<string, string>>;
+  /**
+   * Rejects sandbox cwd values that point into the current server workspace.
+   */
+  readonly denyServerDirectory?: boolean;
+  /**
+   * Optional external sandbox wrapper command for `system` mode.
+   */
+  readonly command?: string;
+  /**
+   * Optional external sandbox wrapper arguments for `system` mode.
+   */
+  readonly args?: readonly string[];
+}
+
+/**
  * Runtime configuration for a `PiWs` instance.
  *
  * @remarks
@@ -533,6 +748,14 @@ export interface PiWsConfig<Session = unknown> {
    * Pi subprocess launch configuration.
    */
   readonly pi: PiProcessConfig;
+  /**
+   * Generated artifact discovery and websocket transfer settings.
+   */
+  readonly artifacts: PiWsArtifactConfig;
+  /**
+   * Pi subprocess isolation settings.
+   */
+  readonly sandbox: PiWsSandboxConfig;
   /**
    * Optional hooks for the built-in Pi WebSocket route at
    * `${wsPrefix}/pi`.
@@ -587,6 +810,14 @@ export interface PiWsOptions<Session = unknown> {
    * Pi subprocess launch settings.
    */
   readonly pi?: PiProcessOptions;
+  /**
+   * Generated artifact discovery and websocket transfer settings.
+   */
+  readonly artifacts?: PiWsArtifactOptions;
+  /**
+   * Pi subprocess isolation settings.
+   */
+  readonly sandbox?: PiWsSandboxOptions;
   /**
    * Optional hooks for the built-in Pi WebSocket route.
    */

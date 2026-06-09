@@ -8,11 +8,37 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(79 55 34 / 0.28) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 1rem;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(79 55 34 / 0.28);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(79 55 34 / 0.5);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {
-  min-height: 100vh;
+  height: 100dvh;
   margin: 0;
+  overflow: hidden;
   background:
     radial-gradient(circle at 10% 20%, #f6c56a 0 11rem, transparent 11.2rem),
     radial-gradient(circle at 90% 5%, #7eb2a7 0 13rem, transparent 13.2rem),
@@ -46,33 +72,41 @@ code {
 }
 
 .shell {
-  width: min(58rem, calc(100% - 2rem));
-  margin: 0 auto;
-  padding: 3rem 0;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 0.75rem;
 }
 
-.hero {
-  max-width: 48rem;
-  margin-bottom: 1rem;
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.5rem 1rem;
+  flex-shrink: 0;
 }
 
-.hero h1 {
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.brand h1 {
   margin: 0;
-  font-size: clamp(2.2rem, 6vw, 5.2rem);
-  line-height: 0.92;
-  letter-spacing: -0.055em;
-}
-
-.hero p {
-  max-width: 40rem;
-  font-size: 1.05rem;
+  font-size: 1.4rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
 .eyebrow {
-  margin: 0 0 0.6rem;
   color: #7b4b24;
   font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -89,27 +123,47 @@ code {
 }
 
 .connection-panel {
-  display: grid;
-  gap: 0.55rem;
-  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .connection-panel label {
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.82rem;
 }
 
 .connection-row {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .connection-row input {
   flex: 1;
+  min-width: 8rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.token-input {
+  max-width: 14rem;
 }
 
 .connection-row button {
   flex: 0 0 auto;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.connection-row .status {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 input,
@@ -130,15 +184,71 @@ textarea {
   margin: 0;
   color: #6d5237;
   font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.session-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.75rem;
+  border: 1px solid rgb(79 55 34 / 0.14);
+  border-radius: 0.75rem;
+  padding: 0.3rem 0.65rem;
+  background: rgb(255 255 255 / 0.42);
+}
+
+.session-info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.session-info-label {
+  color: #6d5237;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.session-info code {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+  gap: 1rem;
+}
+
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 1rem;
 }
 
 .messages {
   display: grid;
+  align-content: start;
   gap: 0.9rem;
-  min-height: 18rem;
-  margin: 1rem 0;
-  padding: 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 0.6rem 1rem 1rem;
 }
 
 .message {
@@ -168,10 +278,134 @@ textarea {
   font-size: 0.82rem;
 }
 
+.message.artifact {
+  max-width: min(100%, 34rem);
+  padding: 0;
+  background: transparent;
+}
+
+.artifact-card {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: 1.25rem;
+  padding: 0.9rem 1rem;
+  background: #fff8ea;
+}
+
+.artifact-card img {
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(79 55 34 / 0.14);
+  object-fit: contain;
+}
+
+.artifact-frame,
+.artifact-media {
+  width: 100%;
+  border: 1px solid rgb(79 55 34 / 0.14);
+  border-radius: 0.9rem;
+  background: rgb(255 255 255 / 0.68);
+}
+
+.artifact-frame {
+  min-height: 24rem;
+}
+
+.artifact-media {
+  display: block;
+}
+
+.artifact-text,
+.artifact-binary {
+  margin: 0;
+  border: 1px solid rgb(79 55 34 / 0.14);
+  border-radius: 0.9rem;
+  padding: 0.85rem;
+  background: rgb(255 255 255 / 0.68);
+}
+
+.artifact-text {
+  max-height: 22rem;
+  overflow: auto;
+  font-size: 0.82rem;
+}
+
+.artifact-table-wrap {
+  max-height: 24rem;
+  overflow: auto;
+  border: 1px solid rgb(79 55 34 / 0.14);
+  border-radius: 0.9rem;
+  background: rgb(255 255 255 / 0.68);
+}
+
+.artifact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.artifact-table th,
+.artifact-table td {
+  max-width: 14rem;
+  border-bottom: 1px solid rgb(79 55 34 / 0.12);
+  border-right: 1px solid rgb(79 55 34 / 0.1);
+  padding: 0.45rem 0.55rem;
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+}
+
+.artifact-table th {
+  position: sticky;
+  top: 0;
+  color: #fff8ea;
+  background: #253f3a;
+}
+
+.artifact-table-note {
+  margin: 0;
+  padding: 0.55rem;
+  color: #6d5237;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.76rem;
+}
+
+.artifact-binary {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.artifact-binary-heading {
+  margin: 0;
+  color: #6d5237;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.artifact-signature {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+
+.artifact-card a {
+  color: #214740;
+  font-weight: 700;
+}
+
+.artifact-meta {
+  margin: 0;
+  color: #6d5237;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.82rem;
+}
+
 .composer {
   display: grid;
   gap: 0.8rem;
   padding: 1rem;
+  flex-shrink: 0;
 }
 
 .composer-actions {
@@ -181,17 +415,52 @@ textarea {
 }
 
 .event-log {
-  margin-top: 1rem;
+  width: 22rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 1rem;
+  overflow: hidden;
+}
+
+.event-log-heading {
+  margin: 0 0 0.5rem;
+  color: #6d5237;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .event-log pre {
-  max-height: 18rem;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  margin: 0;
   font-size: 0.8rem;
+  padding-right: 0.25rem;
+  padding-bottom: 0.25rem;
 }
 
 @media (max-width: 680px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .workspace {
+    flex-direction: column;
+  }
+
+  .event-log {
+    width: 100%;
+    height: 14rem;
+    flex-shrink: 0;
+  }
+
   .connection-row,
   .composer-actions {
     flex-direction: column;

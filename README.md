@@ -16,8 +16,10 @@ ws://0.0.0.0:8787/ws/pi
 
 Clients send pi RPC JSON objects as text WebSocket frames. pi-ws validates
 each frame as a JSON object and forwards it to pi as one JSONL command. pi RPC
-events and responses are forwarded back as JSON text frames. Bridge lifecycle
-events use `pi_ws_*` event types.
+events and responses are forwarded back as JSON text frames. Generated
+artifacts such as images are announced with `pi_ws_artifact*` JSON events and
+then streamed as binary WebSocket frames. Bridge lifecycle events use
+`pi_ws_*` event types.
 
 ## Requirements
 
@@ -72,6 +74,16 @@ const pipe = new PiWs()
   .configure({
     host: '127.0.0.1',
     port: 8787,
+  })
+  .configureArtifacts({
+    dir: './.pi-ws/artifacts',
+    logFile: './.pi-ws/pi-ws.log',
+    logLevel: 'info',
+  })
+  .configureSandbox({
+    cwd: './.pi-ws/sandbox',
+    envPolicy: 'minimal',
+    mode: 'process',
   })
   .configureTls({
     keyFileName: './certs/dev-key.pem',
@@ -140,6 +152,81 @@ their first message:
 ```json
 { "token": "dev-secret", "type": "pi_ws_auth" }
 ```
+
+## Artifacts And Binary Frames
+
+The built-in Pi route uses a mixed transport model:
+
+- Pi RPC requests, responses, auth, stderr, and bridge control events are text
+  JSON frames.
+- Generated files are detected in a per-connection artifact directory and sent
+  as metadata JSON followed by binary WebSocket frames.
+
+Relevant config:
+
+```ts
+const pipe = new PiWs({
+  artifacts: {
+    dir: './.pi-ws/artifacts',
+    chunkSizeBytes: 256 * 1024,
+    maxFileBytes: 25 * 1024 * 1024,
+    logLevel: 'info',
+    logFile: './.pi-ws/pi-ws.log',
+  },
+});
+```
+
+When artifacts are enabled, pi-ws creates one subdirectory per WebSocket
+connection and exposes it to Pi as `PI_WS_ARTIFACT_DIR`. The bridge also adds
+system prompt guidance so normal requests like “draw a chart” or “create a
+CSV” are treated as artifact requests and saved into that directory.
+
+Small files are sent as:
+
+1. `pi_ws_artifact` JSON metadata
+2. one binary frame with the file bytes
+
+Large files are sent as:
+
+1. `pi_ws_artifact_start`
+2. repeated `pi_ws_artifact_chunk` metadata frames
+3. one binary frame per chunk
+4. `pi_ws_artifact_end`
+
+Inbound binary frames from clients are still rejected.
+
+## Sandbox And Environment Isolation
+
+The Pi subprocess can run with an isolated working directory and a reduced
+environment:
+
+```ts
+const pipe = new PiWs({
+  sandbox: {
+    mode: 'process',
+    cwd: './.pi-ws/sandbox',
+    envPolicy: 'minimal',
+    allowReadDirs: ['./inputs'],
+    allowWriteDirs: ['./scratch'],
+    denyServerDirectory: true,
+  },
+});
+```
+
+`process` mode creates one per-session sandbox root under `sandbox.cwd` and
+places cwd, `HOME`, and `TMPDIR` inside that root. Tool caches, package-manager
+state, and generated temporary files should use those generic locations instead
+of package-specific bridge configuration. `system` mode lets you wrap Pi in an
+external sandbox command such as `bwrap` or `firejail` by configuring
+`sandbox.command` and `sandbox.args`.
+
+`denyServerDirectory` blocks using the repository itself as Pi cwd, but it
+still allows the configured sandbox root to live under the repository, such as
+`./.tmp/pi-ws-example/sandbox`.
+
+The default `envPolicy` is `minimal`, which forwards a small provider-focused
+allowlist plus any names in `sandbox.envAllowlist`. This is meant to keep the
+Pi agent away from unrelated server secrets by default.
 
 For the full exported API surface, see [docs/api/pi-ws.md](docs/api/pi-ws.md).
 
@@ -255,6 +342,10 @@ The page connects to:
 ```text
 ws://127.0.0.1:8787/ws/pi
 ```
+
+The example UI previews image, audio, video, PDF, text, and CSV artifacts
+returned by the agent. Every artifact also gets a blob URL download link, and
+the page logs the artifact metadata events it receives.
 
 You do not need to launch Pi separately for this flow. pi-ws starts one
 bundled Pi subprocess in RPC mode for each `/ws/pi` websocket connection:

@@ -9,6 +9,9 @@ export default [
       '**/node_modules/',
       '**/.vscode/',
       '**/dist/',
+      '**/.pi-ws/',
+      '**/.tmp/',
+      '**/temp/',
     ],
   },
   {

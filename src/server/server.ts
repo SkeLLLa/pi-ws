@@ -6,6 +6,7 @@ import {
   type TemplatedApp,
   type us_listen_socket,
 } from 'uWebSockets.js';
+import { createArtifactLogger } from '../artifacts/logger.js';
 import { createPiWebSocketRoute } from '../ws/pi-route.js';
 import { createDefaultConfig } from './config.js';
 import { ChatExampleRoutes } from './static.js';
@@ -15,10 +16,12 @@ import type {
   HttpMethod,
   HttpRoute,
   PiProcessOptions,
+  PiWsArtifactOptions,
   PiWsConfig,
   PiWsHookName,
   PiWsListenOptions,
   PiWsOptions,
+  PiWsSandboxOptions,
   RequestHook,
   RouteInstaller,
   RunningServer,
@@ -109,6 +112,40 @@ export class PiWs<Session = unknown> {
       ...this.#config,
       pi: {
         ...this.#config.pi,
+        ...config,
+      },
+    };
+    return this;
+  }
+
+  /**
+   * Merges generated artifact transfer settings into the current instance.
+   *
+   * @param config - Partial artifact configuration to merge.
+   * @returns The current `PiWs` instance.
+   */
+  configureArtifacts(config: PiWsArtifactOptions): this {
+    this.#config = {
+      ...this.#config,
+      artifacts: {
+        ...this.#config.artifacts,
+        ...config,
+      },
+    };
+    return this;
+  }
+
+  /**
+   * Merges Pi sandbox settings into the current instance.
+   *
+   * @param config - Partial sandbox configuration to merge.
+   * @returns The current `PiWs` instance.
+   */
+  configureSandbox(config: PiWsSandboxOptions): this {
+    this.#config = {
+      ...this.#config,
+      sandbox: {
+        ...this.#config.sandbox,
         ...config,
       },
     };
@@ -323,8 +360,11 @@ export class PiWs<Session = unknown> {
     app.ws(
       `${this.#config.wsPrefix}/pi`,
       createPiWebSocketRoute<Session>({
+        artifacts: this.#config.artifacts,
+        logger: createArtifactLogger(this.#config.artifacts),
         pi: this.#config.pi,
         maxPayloadBytes: this.#config.maxPayloadBytes,
+        sandbox: this.#config.sandbox,
         ...(this.#config.piHooks === undefined
           ? {}
           : { hooks: this.#config.piHooks }),
@@ -388,9 +428,17 @@ function mergeConfig<Session>({
   return {
     ...base,
     ...override,
+    artifacts: {
+      ...base.artifacts,
+      ...override.artifacts,
+    },
     pi: {
       ...base.pi,
       ...override.pi,
+    },
+    sandbox: {
+      ...base.sandbox,
+      ...override.sandbox,
     },
     ...(tls === undefined ? {} : { tls }),
   };

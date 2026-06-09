@@ -1,7 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import type { PiProcessConfig } from '../server/types.js';
 import { JsonlSplitter, parseJsonObject } from '../utils/jsonl.js';
-import { resolvePiCommand } from './resolve-pi-command.js';
+import type { PreparedPiLaunch } from './sandbox.js';
 
 export interface PiRpcProcessHandlers {
   readonly onMessage: (message: Record<string, unknown>) => void;
@@ -15,16 +14,15 @@ export class PiRpcProcess {
   #closed = false;
 
   constructor({
-    config,
     handlers,
+    launch,
   }: {
-    config: PiProcessConfig;
     handlers: PiRpcProcessHandlers;
+    launch: PreparedPiLaunch;
   }) {
-    const resolved = resolvePiCommand(config);
-    this.#child = spawn(resolved.command, [...resolved.args], {
-      cwd: config.cwd,
-      env: resolvePiEnvironment(config),
+    this.#child = spawn(launch.command, launch.resolvedCommandLine.slice(1), {
+      cwd: launch.cwd,
+      env: launch.env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
@@ -64,15 +62,6 @@ export class PiRpcProcess {
       this.#child.kill('SIGTERM');
     }
   }
-}
-
-function resolvePiEnvironment(
-  config: PiProcessConfig,
-): Readonly<Record<string, string>> {
-  if (config.agentDir === undefined || config.agentDir.trim() === '') {
-    return config.env;
-  }
-  return { ...config.env, PI_CODING_AGENT_DIR: config.agentDir };
 }
 
 function getErrorMessage(error: unknown): string {

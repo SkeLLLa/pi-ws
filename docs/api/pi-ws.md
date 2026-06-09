@@ -216,6 +216,24 @@ Partial Pi subprocess configuration accepted from callers and config files.
 </td></tr>
 <tr><td>
 
+[PiWsArtifactConfig](./pi-ws.piwsartifactconfig.md)
+
+</td><td>
+
+Generated artifact transfer settings for the built-in Pi WebSocket route.
+
+</td></tr>
+<tr><td>
+
+[PiWsArtifactOptions](./pi-ws.piwsartifactoptions.md)
+
+</td><td>
+
+Partial artifact configuration accepted from callers and config files.
+
+</td></tr>
+<tr><td>
+
 [PiWsConfig](./pi-ws.piwsconfig.md)
 
 </td><td>
@@ -257,6 +275,24 @@ Optional per-listen overrides for host and port.
 </td><td>
 
 Partial server configuration accepted from callers and config files.
+
+</td></tr>
+<tr><td>
+
+[PiWsSandboxConfig](./pi-ws.piwssandboxconfig.md)
+
+</td><td>
+
+Pi subprocess isolation settings.
+
+</td></tr>
+<tr><td>
+
+[PiWsSandboxOptions](./pi-ws.piwssandboxoptions.md)
+
+</td><td>
+
+Partial Pi sandbox configuration accepted from callers and config files.
 
 </td></tr>
 <tr><td>
@@ -427,6 +463,24 @@ Supported `uWebSockets.js` HTTP route methods.
 </td><td>
 
 Supported built-in Pi route hook names.
+
+</td></tr>
+<tr><td>
+
+[PiWsSandboxEnvPolicy](./pi-ws.piwssandboxenvpolicy.md)
+
+</td><td>
+
+Environment inheritance policy for the Pi subprocess.
+
+</td></tr>
+<tr><td>
+
+[PiWsSandboxMode](./pi-ws.piwssandboxmode.md)
+
+</td><td>
+
+Supported Pi sandbox modes.
 
 </td></tr>
 <tr><td>

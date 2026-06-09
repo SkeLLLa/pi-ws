@@ -37,6 +37,23 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
+[artifacts?](./pi-ws.piwsoptions.artifacts.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[PiWsArtifactOptions](./pi-ws.piwsartifactoptions.md)
+
+</td><td>
+
+_(Optional)_ Generated artifact discovery and websocket transfer settings.
+
+</td></tr>
+<tr><td>
+
 [chatExample?](./pi-ws.piwsoptions.chatexample.md)
 
 </td><td>
@@ -135,6 +152,23 @@ number
 </td><td>
 
 _(Optional)_ TCP port to listen on.
+
+</td></tr>
+<tr><td>
+
+[sandbox?](./pi-ws.piwsoptions.sandbox.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[PiWsSandboxOptions](./pi-ws.piwssandboxoptions.md)
+
+</td><td>
+
+_(Optional)_ Pi subprocess isolation settings.
 
 </td></tr>
 <tr><td>
