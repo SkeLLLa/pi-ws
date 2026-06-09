@@ -1,3 +1,9 @@
+## [1.0.2](https://github.com/SkeLLLa/pi-ws/compare/v1.0.1...v1.0.2) (2026-06-09)
+
+### Fixes
+
+* docs ([6af9cfa](https://github.com/SkeLLLa/pi-ws/commit/6af9cfaa16f23b5136cd7dc5930b29a546f72e21))
+
 ## [1.0.1](https://github.com/SkeLLLa/pi-ws/compare/v1.0.0...v1.0.1) (2026-06-09)
 
 ### Fixes
