@@ -102,7 +102,7 @@ export type HttpMethod =
  *
  * @remarks
  * The callback receives the native `uWebSockets.js` response and request
- * objects. `pi-pipe` does not wrap them.
+ * objects. `pi-ws` does not wrap them.
  *
  * @public
  */

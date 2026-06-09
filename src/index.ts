@@ -1,8 +1,8 @@
 /**
- * Library-first entrypoint for pi-pipe.
+ * Library-first entrypoint for pi-ws.
  *
  * Use `new PiPipe()` to embed the server programmatically, or use the
- * `pi-pipe` binary for the default as-is server.
+ * `pi-ws` binary for the default as-is server.
  *
  * @packageDocumentation
  */

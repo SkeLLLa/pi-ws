@@ -8,7 +8,7 @@ const pipe = new PiPipe({
 pipe.handle('get', '/api/hello', (res) => {
   res
     .writeHeader('content-type', 'application/json')
-    .end(JSON.stringify({ hello: 'pi-pipe' }));
+    .end(JSON.stringify({ hello: 'pi-ws' }));
 });
 
 pipe.route('/ws/echo', {

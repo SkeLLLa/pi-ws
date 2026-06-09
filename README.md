@@ -1,11 +1,11 @@
-# pi-pipe
+# pi-ws
 
 Minimalistic, extendable server that exposes a local **pi** AI agent to the
 internet over WebSocket. The pi agent runs on the same machine in RPC mode;
-pi-pipe bridges public WebSocket clients to it.
+pi-ws bridges public WebSocket clients to it.
 
 ```
-browser/client  ──ws──▶  pi-pipe  ──rpc──▶  pi agent (rpc mode)
+browser/client  ──ws──▶  pi-ws  ──rpc──▶  pi agent (rpc mode)
 ```
 
 Default endpoint:
@@ -14,7 +14,7 @@ Default endpoint:
 ws://0.0.0.0:8787/ws/pi
 ```
 
-Clients send pi RPC JSON objects as text WebSocket frames. pi-pipe validates
+Clients send pi RPC JSON objects as text WebSocket frames. pi-ws validates
 each frame as a JSON object and forwards it to pi as one JSONL command. pi RPC
 events and responses are forwarded back as JSON text frames. Bridge lifecycle
 events use `pi_pipe_*` event types.
@@ -47,7 +47,7 @@ pnpm install
 Generated API reference:
 
 - [API index](docs/api/index.md)
-- [Package overview](docs/api/pi-pipe.md)
+- [Package overview](docs/api/pi-ws.md)
 
 Regenerate it with:
 
@@ -57,10 +57,10 @@ pnpm build:docs
 
 ## Library Usage
 
-`pi-pipe` is library-first. Embed `PiPipe`, add your routes, then listen:
+`pi-ws` is library-first. Embed `PiPipe`, add your routes, then listen:
 
 ```ts
-import { PiPipe } from 'pi-pipe';
+import { PiPipe } from 'pi-ws';
 
 const pipe = new PiPipe({
   host: '127.0.0.1',
@@ -86,7 +86,7 @@ The built-in Pi RPC route remains available at `/ws/pi`. Use `handle()` for
 HTTP routes, `route()` for WebSocket routes, and `use()` for direct
 `uWebSockets.js` access when needed.
 
-For the full exported API surface, see [docs/api/pi-pipe.md](docs/api/pi-pipe.md).
+For the full exported API surface, see [docs/api/pi-ws.md](docs/api/pi-ws.md).
 
 ### Run The Embedded Example
 
@@ -111,16 +111,16 @@ Or check the custom HTTP route:
 curl http://127.0.0.1:8787/api/hello
 ```
 
-When using `pi-pipe` from another project:
+When using `pi-ws` from another project:
 
 ```bash
-pnpm add pi-pipe
+pnpm add pi-ws
 ```
 
 Create `server.mjs`:
 
 ```js
-import { PiPipe } from 'pi-pipe';
+import { PiPipe } from 'pi-ws';
 
 const pipe = new PiPipe({
   host: '127.0.0.1',
@@ -130,7 +130,7 @@ const pipe = new PiPipe({
 pipe.handle('get', '/api/hello', (res) => {
   res
     .writeHeader('content-type', 'application/json')
-    .end(JSON.stringify({ hello: 'pi-pipe' }));
+    .end(JSON.stringify({ hello: 'pi-ws' }));
 });
 
 await pipe.listen();
@@ -144,7 +144,7 @@ node server.mjs
 
 ## Binary Usage
 
-The `pi-pipe` binary is a thin wrapper around the library:
+The `pi-ws` binary is a thin wrapper around the library:
 
 ```ts
 const pipe = new PiPipe();
@@ -154,7 +154,7 @@ await pipe.listen();
 After installing the package, run:
 
 ```bash
-pi-pipe
+pi-ws
 ```
 
 From this repository, the equivalent binary-style commands are:
@@ -194,7 +194,7 @@ The page connects to:
 ws://127.0.0.1:8787/ws/pi
 ```
 
-You do not need to launch Pi separately for this flow. pi-pipe starts one
+You do not need to launch Pi separately for this flow. pi-ws starts one
 bundled Pi subprocess in RPC mode for each `/ws/pi` websocket connection:
 
 ```text

@@ -30,7 +30,7 @@ const baseUrl = resolveBaseUrl(provider);
 const model = process.env.PI_MODEL;
 const sessionDir =
   process.env.PI_CODING_AGENT_SESSION_DIR ??
-  resolve(root, '.tmp/pi-pipe-example/sessions');
+  resolve(root, '.tmp/pi-ws-example/sessions');
 
 configureApiKey(provider);
 
@@ -38,7 +38,7 @@ if (baseUrl !== undefined && baseUrl !== '') {
   configureCustomModels({
     agentDir:
       process.env.PI_CODING_AGENT_DIR ??
-      resolve(root, '.tmp/pi-pipe-example/agent'),
+      resolve(root, '.tmp/pi-ws-example/agent'),
     api: process.env.PI_API ?? 'openai-completions',
     apiKey: resolveApiKeyRef(provider),
     baseUrl,
@@ -68,7 +68,7 @@ const pipe = new PiPipe({
 const server = await pipe.listen();
 
 console.log(
-  `pi-pipe example: http://${host}:${String(server.port)}/examples/chat/`,
+  `pi-ws example: http://${host}:${String(server.port)}/examples/chat/`,
 );
 console.log(`pi rpc websocket: ws://${host}:${String(server.port)}/ws/pi`);
 console.log(`provider: ${provider}`);

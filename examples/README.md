@@ -1,11 +1,11 @@
-# pi-pipe Examples
+# pi-ws Examples
 
-This directory contains runnable examples for using `pi-pipe` as a library and
+This directory contains runnable examples for using `pi-ws` as a library and
 as a ready-made server.
 
 ## What Starts Pi?
 
-For the WebSocket examples, you do not start Pi manually. `pi-pipe` starts a
+For the WebSocket examples, you do not start Pi manually. `pi-ws` starts a
 local Pi subprocess for each `/ws/pi` WebSocket connection:
 
 ```text
@@ -170,7 +170,7 @@ PI_API_KEY='sk-...' \
 The launcher writes a temporary Pi model config to:
 
 ```text
-.tmp/pi-pipe-example/agent/models.json
+.tmp/pi-ws-example/agent/models.json
 ```
 
 It also sets `PI_CODING_AGENT_DIR` to that directory for the running process, so
@@ -283,7 +283,7 @@ It exposes:
 - If Pi reports no model is available, verify the API key env var and run
   `pnpm exec pi --provider <provider> --list-models`.
 - If you use `PI_BASE_URL`, `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, or another
-  provider base URL, verify the temporary `.tmp/pi-pipe-example/agent/models.json`
+  provider base URL, verify the temporary `.tmp/pi-ws-example/agent/models.json`
   provider name matches `PI_PROVIDER`.
 - If you expose the server beyond localhost, add authentication/reverse-proxy
   controls before putting it on the internet.
