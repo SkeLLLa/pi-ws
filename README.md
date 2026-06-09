@@ -1,206 +1,201 @@
 # pi-ws
 
-Minimalistic, extendable server that exposes a local **pi** AI agent to the
-internet over WebSocket. The pi agent runs on the same machine in RPC mode;
-pi-ws bridges public WebSocket clients to it.
+[![NPM Version](https://img.shields.io/npm/v/pi-ws.svg)](https://www.npmjs.com/package/pi-ws)
+[![Downloads Count](https://img.shields.io/npm/dm/pi-ws.svg)](https://www.npmjs.com/package/pi-ws)
+[![Vulnerabilities Count](https://snyk.io/test/npm/pi-ws/badge.svg)](https://www.npmjs.com/package/pi-ws)
+[![Build Status](https://github.com/SkeLLLa/pi-ws/workflows/release/badge.svg)](https://github.com/SkeLLLa/pi-ws/actions)
+[![License](https://img.shields.io/npm/l/pi-ws.svg)](https://github.com/SkeLLLa/pi-ws/blob/master/LICENSE)
+[![Codecov](https://img.shields.io/codecov/c/gh/SkeLLLa/pi-ws.svg)](https://codecov.io/gh/SkeLLLa/pi-ws)
+[![Socket Badge](https://socket.dev/api/badge/npm/package/pi-ws)](https://socket.dev/npm/package/pi-ws)
 
-```
-browser/client  ──ws──▶  pi-ws  ──rpc──▶  pi agent (rpc mode)
-```
+Embeddable Node.js WebSocket bridge for running local
+[`pi`](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) coding
+agent RPC sessions from browsers, internal tools, dashboards, and custom
+automation.
 
-Default endpoint:
+`pi-ws` is library-first: you embed `PiWs` in your own Node.js process, keep
+control over auth and routes, and get a built-in `/ws/pi` bridge that starts one
+local Pi subprocess per WebSocket connection.
 
 ```text
-ws://127.0.0.1:8787/ws/pi
+browser/client  ── WebSocket JSON ──▶  pi-ws  ── JSONL stdin/stdout ──▶  pi --mode rpc
 ```
 
-Clients send pi RPC JSON objects as text WebSocket frames. pi-ws validates
-each frame as a JSON object and forwards it to pi as one JSONL command. pi RPC
-events and responses are forwarded back as JSON text frames. Generated
-artifacts such as images are announced with `pi_ws_artifact*` JSON events and
-then streamed as binary WebSocket frames. Bridge lifecycle events use
-`pi_ws_*` event types.
+## Features
 
-## Requirements
+- Built-in Pi RPC WebSocket route at `/ws/pi`.
+- Library extension points for custom HTTP routes, WebSocket routes, and direct
+  `uWebSockets.js` installers.
+- Optional hook-based auth; no authentication is enabled unless you add hooks or
+  opt into the reference token hook.
+- Reference shared-token auth for WebSocket and HTTP helpers.
+- Artifact transfer for generated files, enabled by default.
+- Binary WebSocket streaming for images, PDFs, CSVs, text, archives, audio,
+  video, and other agent-created files.
+- Per-session process sandbox workspace with reduced environment by default.
+- Optional external system sandbox wrapper such as `bwrap` or `firejail`.
+- `c12`-based config loading for binaries and deployments.
+- Structured `pino` logs and example launchers with `pino-pretty`.
+- TypeScript-first public API.
 
-- [mise](https://mise.jdx.dev/) (manages node + pnpm versions)
-
-## Setup
+## Installation
 
 ```bash
-mise install # installs node + pnpm from .mise.toml
-pnpm install
+pnpm add pi-ws
 ```
-
-## Scripts
-
-- `pnpm dev` — watch-mode entrypoint (tsx)
-- `pnpm demo` — run the server on `127.0.0.1:8787` with the chat example
-- `pnpm build` — type-check + emit to `dist/`
-- `pnpm start` — run built entrypoint
-- `pnpm demo:built` — run the built server with the chat example
-- `pnpm example:chat` — build and run the guided chat example launcher
-- `pnpm build:docs` — generate API report + markdown docs into `docs/api/`
-- `pnpm lint` — types + eslint + audit
-- `pnpm test` — lint + unit tests
-
-## API Docs
-
-Generated API reference:
-
-- [API index](docs/api/index.md)
-- [Package overview](docs/api/pi-ws.md)
-
-Regenerate it with:
 
 ```bash
-pnpm build:docs
+npm install pi-ws
 ```
 
-## Library Usage
+Node.js `>=22.19.0` is required.
 
-`pi-ws` is library-first. Embed `PiWs`, add your routes, and optionally layer
-TLS, route protection, and Pi customization on top:
+## Quick Start
 
 ```ts
-import {
-  createStaticTokenAuthHook,
-  PiWs,
-  protectHttpHandler,
-  StaticTokenAuthorizer,
-} from 'pi-ws';
+import { PiWs } from 'pi-ws';
 
-const pipe = new PiWs()
-  .configure({
-    host: '127.0.0.1',
-    port: 8787,
-  })
-  .configureArtifacts({
-    dir: './.pi-ws/artifacts',
-    logFile: './.pi-ws/pi-ws.log',
-    logLevel: 'info',
-  })
-  .configureSandbox({
-    cwd: './.pi-ws/sandbox',
-    envPolicy: 'minimal',
-    mode: 'process',
-  })
-  .configureTls({
-    keyFileName: './certs/dev-key.pem',
-    certFileName: './certs/dev-cert.pem',
-  })
-  .configurePi({
-    args: ['--no-session'],
-    provider: 'openai',
-    model: 'gpt-4.1',
-    systemPrompt: 'You are a careful release engineer.',
-    appendSystemPrompt: ['Always summarize risks first.'],
-    promptTemplates: ['./.pi/prompts/review.md'],
-  });
-
-const tokenHook = createStaticTokenAuthHook({
-  token: process.env.PI_WS_AUTH_TOKEN ?? 'dev-secret',
-  queryParam: 'token',
-  createSession: async (request) => ({
-    authenticated: true,
-    clientId: request.headers['x-client-id'] ?? 'browser',
-  }),
+const pipe = new PiWs({
+  host: '127.0.0.1',
+  port: 8787,
+  chatExample: false,
 });
-
-pipe.addHook('onAuth', tokenHook);
-
-const tokenAuthorizer = new StaticTokenAuthorizer({
-  token: process.env.PI_WS_AUTH_TOKEN ?? 'dev-secret',
-  queryParam: 'token',
-}).authorize;
 
 pipe.handle({
   method: 'get',
-  path: '/api/version',
-  handler: protectHttpHandler({
-    handler: (res) => {
-      res
-        .writeHeader('content-type', 'application/json')
-        .end(JSON.stringify({ version: 'local-dev' }));
-    },
-    authorize: tokenAuthorizer,
-  }),
-});
-
-pipe.route({
-  path: '/ws/echo',
-  behavior: {
-    message(ws, message, isBinary) {
-      ws.send(message, isBinary);
-    },
+  path: '/health/application',
+  handler: (res) => {
+    res
+      .writeHeader('content-type', 'application/json')
+      .end(JSON.stringify({ ok: true }));
   },
 });
 
 await pipe.listen();
 ```
 
-The built-in Pi RPC route remains available at `/ws/pi`. Use `handle()` for
-HTTP routes, `route()` for WebSocket routes, and `use()` for direct
-`uWebSockets.js` access when needed. Use `addHook('onRequest', ...)` for
-pre-upgrade request checks, `addHook('onAuth', ...)` for authentication, and
-`protectHttpHandler()` /
-`protectWebSocketBehavior()` to reuse the same auth logic on your own routes.
-Authentication is not enabled by default; `createStaticTokenAuthHook()` and
-`StaticTokenAuthorizer` are reference implementations you can opt into.
+The built-in Pi bridge is available at:
 
-Browser clients that cannot send WebSocket upgrade headers can authenticate as
-their first message:
-
-```json
-{ "token": "dev-secret", "type": "pi_ws_auth" }
+```text
+ws://127.0.0.1:8787/ws/pi
 ```
 
-## Artifacts And Binary Frames
+Clients send Pi RPC JSON objects as WebSocket text frames. `pi-ws` validates
+each frame as a JSON object, forwards it to Pi as JSONL, parses Pi stdout back
+to JSON objects, and sends responses back as WebSocket text frames.
 
-The built-in Pi route uses a mixed transport model:
+## Auth Is Opt-In
 
-- Pi RPC requests, responses, auth, stderr, and bridge control events are text
-  JSON frames.
-- Generated files are detected in a per-connection artifact directory and sent
-  as metadata JSON followed by binary WebSocket frames.
+`pi-ws` does not implement mandatory server auth and does not enable auth by
+default. Applications decide how to protect the route using hooks, reverse
+proxies, network policy, or their existing auth stack.
 
-Relevant config:
+The package includes a small token-based reference implementation for projects
+that want a simple built-in option:
+
+```ts
+import { createStaticTokenAuthHook, PiWs } from 'pi-ws';
+
+const pipe = new PiWs();
+
+pipe.addHook(
+  'onAuth',
+  createStaticTokenAuthHook({
+    token: process.env.PI_WS_AUTH_TOKEN ?? 'change-me',
+    queryParam: 'token',
+    createSession: async (request) => ({
+      clientAddress: request.remoteAddress ?? 'unknown',
+    }),
+  }),
+);
+
+await pipe.listen();
+```
+
+Browser clients that cannot send custom WebSocket upgrade headers can
+authenticate with the reserved first message:
+
+```json
+{ "token": "change-me", "type": "pi_ws_auth" }
+```
+
+For HTTP routes, use the same token policy with `protectHttpHandler()`:
+
+```ts
+import { protectHttpHandler, StaticTokenAuthorizer } from 'pi-ws';
+
+const authorize = new StaticTokenAuthorizer({
+  token: 'change-me',
+  queryParam: 'token',
+}).authorize;
+
+pipe.handle({
+  method: 'get',
+  path: '/api/private',
+  handler: protectHttpHandler({
+    authorize,
+    handler: (res) => {
+      res.end('ok');
+    },
+  }),
+});
+```
+
+## Artifacts
+
+Artifacts are enabled by default. Each WebSocket session gets a private
+artifact directory under the configured artifact root, and the Pi subprocess
+receives the full path through `PI_WS_ARTIFACT_DIR`.
+
+The browser does not need the absolute server path. The ready event exposes
+safe status only:
+
+```json
+{
+  "artifactDirName": "s-8588573f292b",
+  "artifactsEnabled": true,
+  "sandboxMode": "process",
+  "type": "pi_ws_ready"
+}
+```
+
+`artifactDirName` is only the last directory name, not the full path.
+
+Small files are sent as one metadata frame plus one binary frame:
+
+1. `pi_ws_artifact`
+2. binary file bytes
+
+Large files are sent as chunk metadata plus binary frames:
+
+1. `pi_ws_artifact_start`
+2. repeated `pi_ws_artifact_chunk`
+3. one binary frame per chunk
+4. `pi_ws_artifact_end`
+
+Example config:
 
 ```ts
 const pipe = new PiWs({
   artifacts: {
+    enabled: true,
     dir: './.pi-ws/artifacts',
-    chunkSizeBytes: 256 * 1024,
     maxFileBytes: 25 * 1024 * 1024,
+    chunkSizeBytes: 256 * 1024,
     logLevel: 'info',
     logFile: './.pi-ws/pi-ws.log',
   },
 });
 ```
 
-When artifacts are enabled, pi-ws creates one subdirectory per WebSocket
-connection and exposes it to Pi as `PI_WS_ARTIFACT_DIR`. The bridge also adds
-system prompt guidance so normal requests like “draw a chart” or “create a
-CSV” are treated as artifact requests and saved into that directory.
+Generated files are discovered after they are stable on disk. Symlinks and
+paths outside the artifact root are ignored.
 
-Small files are sent as:
+## Sandbox And Environment
 
-1. `pi_ws_artifact` JSON metadata
-2. one binary frame with the file bytes
-
-Large files are sent as:
-
-1. `pi_ws_artifact_start`
-2. repeated `pi_ws_artifact_chunk` metadata frames
-3. one binary frame per chunk
-4. `pi_ws_artifact_end`
-
-Inbound binary frames from clients are still rejected.
-
-## Sandbox And Environment Isolation
-
-The Pi subprocess can run with an isolated working directory and a reduced
-environment:
+The default sandbox mode is `process`. It creates one session root under
+`sandbox.cwd` and places cwd, `HOME`, and `TMPDIR` inside that root. This is
+process-level isolation and prompt guidance, not an OS security boundary.
 
 ```ts
 const pipe = new PiWs({
@@ -215,80 +210,48 @@ const pipe = new PiWs({
 });
 ```
 
-`process` mode creates one per-session sandbox root under `sandbox.cwd` and
-places cwd, `HOME`, and `TMPDIR` inside that root. Tool caches, package-manager
-state, and generated temporary files should use those generic locations instead
-of package-specific bridge configuration. `system` mode lets you wrap Pi in an
-external sandbox command such as `bwrap` or `firejail` by configuring
-`sandbox.command` and `sandbox.args`.
+Use `system` mode when you need OS-enforced isolation:
 
-`denyServerDirectory` blocks using the repository itself as Pi cwd, but it
-still allows the configured sandbox root to live under the repository, such as
-`./.tmp/pi-ws-example/sandbox`.
-
-The default `envPolicy` is `minimal`, which forwards a small provider-focused
-allowlist plus any names in `sandbox.envAllowlist`. This is meant to keep the
-Pi agent away from unrelated server secrets by default.
-
-For the full exported API surface, see [docs/api/pi-ws.md](docs/api/pi-ws.md).
-
-### Run The Embedded Example
-
-From this repository:
-
-```bash
-mise install
-pnpm install
-pnpm build
-node examples/embedded-server.mjs
-```
-
-Then open:
-
-```text
-http://127.0.0.1:8787/examples/chat/
-```
-
-Or check the custom HTTP route:
-
-```bash
-curl http://127.0.0.1:8787/api/hello
-```
-
-When using `pi-ws` from another project:
-
-```bash
-pnpm add pi-ws
-```
-
-Create `server.mjs`:
-
-```js
-import { PiWs } from 'pi-ws';
-
-const pipe = new PiWs().configure({
-  host: '127.0.0.1',
-  port: 8787,
-});
-
-pipe.handle({
-  method: 'get',
-  path: '/api/hello',
-  handler: (res) => {
-    res
-      .writeHeader('content-type', 'application/json')
-      .end(JSON.stringify({ hello: 'pi-ws' }));
+```ts
+const pipe = new PiWs({
+  sandbox: {
+    mode: 'system',
+    command: 'bwrap',
+    args: [
+      '--ro-bind',
+      '{allowReadDirs}',
+      '--bind',
+      '{allowWriteDirs}',
+      '--chdir',
+      '{sandboxCwd}',
+    ],
   },
 });
-
-await pipe.listen();
 ```
 
-Run it:
+`envPolicy: "minimal"` forwards only a small provider-focused allowlist plus
+`sandbox.envAllowlist`. Explicit `sandbox.env` values remain the supported way
+to pass application-specific tool configuration, but protected sandbox
+variables such as `HOME`, `TMPDIR`, and `PI_WS_SANDBOX_CWD` stay controlled by
+the bridge.
 
-```bash
-node server.mjs
-```
+## Library API
+
+`PiWs` keeps the extension surface intentionally small:
+
+- `handle()` adds HTTP routes.
+- `route()` adds WebSocket routes.
+- `use()` installs low-level `uWebSockets.js` handlers.
+- `addHook('onRequest', hook)` runs pre-upgrade checks for `/ws/pi`.
+- `addHook('onAuth', hook)` authenticates `/ws/pi` from upgrade metadata or the
+  reserved first WebSocket message.
+- `configurePi()`, `configureArtifacts()`, `configureSandbox()`, and
+  `configureTls()` merge focused runtime config.
+
+Generated API docs:
+
+- [API index](docs/api/index.md)
+- [Package overview](docs/api/pi-ws.md)
 
 ## Binary Usage
 
@@ -302,86 +265,13 @@ const pipe = new PiWs(config);
 await pipe.listen();
 ```
 
-After installing the package, run:
+Run after installation:
 
 ```bash
 pi-ws
 ```
 
-From this repository, the equivalent binary-style commands are:
-
-```bash
-pnpm demo
-```
-
-or, after building:
-
-```bash
-pnpm build
-pnpm demo:built
-```
-
-## Chat Example
-
-The repository includes a minimal browser chat UI at `/examples/chat/`.
-See [examples/README.md](examples/README.md) for detailed provider, API key,
-model, proxy/base URL, and mise task instructions.
-
-Normal launch:
-
-```bash
-pnpm demo
-```
-
-Then open:
-
-```text
-http://127.0.0.1:8787/examples/chat/
-```
-
-The page connects to:
-
-```text
-ws://127.0.0.1:8787/ws/pi
-```
-
-The example UI previews image, audio, video, PDF, text, and CSV artifacts
-returned by the agent. Every artifact also gets a blob URL download link, and
-the page logs the artifact metadata events it receives.
-
-You do not need to launch Pi separately for this flow. pi-ws starts one
-bundled Pi subprocess in RPC mode for each `/ws/pi` websocket connection:
-
-```text
-pi --mode rpc --no-session
-```
-
-To use a specific configured LLM provider/model, pass Pi arguments through
-`PI_WS_PI_ARGS`:
-
-```bash
-PI_WS_PI_ARGS='["--no-session","--provider","openai","--model","openai/gpt-4.1"]' pnpm demo
-```
-
-Or use your configured Pi defaults:
-
-```bash
-PI_WS_PI_ARGS='["--no-session"]' pnpm demo
-```
-
-Optional Pi-only sanity check:
-
-```bash
-pnpm exec pi --mode rpc --no-session
-```
-
-Type a JSON command such as `{"type":"get_state"}` and press Enter. Exit with
-`Ctrl+C`.
-
-## Configuration
-
-`pi-ws` now uses `c12` v4 for configuration loading. The binary resolves
-configuration from:
+Configuration is resolved in this order:
 
 1. explicit `loadConfig({ overrides })` values
 2. `PI_WS_*` environment variables
@@ -389,9 +279,7 @@ configuration from:
 4. the `pi-ws` field in `package.json`
 5. built-in defaults
 
-### Config File
-
-Create `pi-ws.config.ts`:
+Example `pi-ws.config.ts`:
 
 ```ts
 import { definePiWsConfig } from 'pi-ws';
@@ -402,201 +290,145 @@ export default definePiWsConfig({
   pi: {
     provider: 'openai',
     model: 'gpt-4.1',
-    systemPrompt: 'You are a careful release engineer.',
   },
 });
 ```
 
-Then run:
+## Environment Variables
+
+Core server:
+
+- `PI_WS_HOST` - bind host, default `127.0.0.1`
+- `PI_WS_PORT` - bind port, default `8787`
+- `PI_WS_PREFIX` - WebSocket prefix, default `/ws`
+- `PI_WS_MAX_PAYLOAD_BYTES` - max inbound frame size
+
+Reference token auth:
+
+- `PI_WS_AUTH_TOKEN` - enables the reference token auth hook for `/ws/pi`
+- `PI_WS_AUTH_HEADER` - token header, default `authorization`
+- `PI_WS_AUTH_SCHEME` - token scheme, default `Bearer`
+- `PI_WS_AUTH_QUERY_PARAM` - optional query-string token parameter
+- `PI_WS_AUTH_REALM` - optional `WWW-Authenticate` realm
+
+Pi subprocess:
+
+- `PI_WS_PI_COMMAND` - optional Pi command override
+- `PI_WS_PI_ARGS` - whitespace args or JSON string array
+- `PI_WS_PI_CWD` - optional Pi subprocess cwd
+- `PI_WS_PI_AGENT_DIR` - optional `PI_CODING_AGENT_DIR`
+- `PI_WS_PI_PROVIDER` - Pi provider
+- `PI_WS_PI_MODEL` - model id or pattern
+- `PI_WS_PI_THINKING` - thinking level
+- `PI_WS_PI_NAME` - session display name
+- `PI_WS_PI_SYSTEM_PROMPT` - replace Pi system prompt
+- `PI_WS_PI_APPEND_SYSTEM_PROMPT` - string or JSON string array
+- `PI_WS_PI_EXTENSIONS` - string or JSON string array
+- `PI_WS_PI_PROMPT_TEMPLATES` - string or JSON string array
+
+Artifacts:
+
+- `PI_WS_ARTIFACTS_ENABLED` - enable/disable artifact transfer
+- `PI_WS_ARTIFACTS_DIR` - artifact root
+- `PI_WS_ARTIFACTS_MAX_FILE_BYTES` - max transfer size
+- `PI_WS_ARTIFACTS_CHUNK_SIZE_BYTES` - binary chunk size
+- `PI_WS_ARTIFACTS_SCAN_INTERVAL_MS` - discovery poll interval
+- `PI_WS_ARTIFACTS_STABILITY_WINDOW_MS` - file stability window
+- `PI_WS_ARTIFACTS_LOG_LEVEL` - pino log level
+- `PI_WS_ARTIFACTS_LOG_FILE` - pino log destination
+
+Sandbox:
+
+- `PI_WS_SANDBOX_MODE` - `off`, `process`, or `system`
+- `PI_WS_SANDBOX_CWD` - sandbox root
+- `PI_WS_SANDBOX_ALLOW_READ_DIRS` - JSON string array
+- `PI_WS_SANDBOX_ALLOW_WRITE_DIRS` - JSON string array
+- `PI_WS_SANDBOX_ENV_POLICY` - `inherit`, `minimal`, or `allowlist`
+- `PI_WS_SANDBOX_ENV_ALLOWLIST` - JSON string array
+- `PI_WS_SANDBOX_ENV` - JSON object of explicit env values
+- `PI_WS_SANDBOX_COMMAND` - external wrapper command for `system`
+- `PI_WS_SANDBOX_ARGS` - wrapper args
+
+TLS:
+
+- `PI_WS_TLS_KEY_FILE` / `PI_WS_TLS_CERT_FILE` - enable HTTPS/WSS
+- `PI_WS_TLS_CA_FILE` - optional CA bundle
+- `PI_WS_TLS_PASSPHRASE` - optional private-key passphrase
+- `PI_WS_TLS_DH_PARAMS_FILE` - optional DH params file
+- `PI_WS_TLS_CIPHERS` - optional OpenSSL cipher suite override
+- `PI_WS_TLS_PREFER_LOW_MEMORY_USAGE` - optional TLS memory tuning flag
+
+## Examples
+
+From this repository:
 
 ```bash
-pi-ws
+mise install
+pnpm install
+pnpm build
+node examples/embedded-server.mjs
 ```
 
-### Env Overrides
+Open:
 
-- `PI_WS_HOST` — bind host, default `127.0.0.1`
-- `PI_WS_PORT` — bind port, default `8787`
-- `PI_WS_PREFIX` — WebSocket prefix, default `/ws`
-- `PI_WS_MAX_PAYLOAD_BYTES` — max inbound frame size, default `1048576`
-- `PI_WS_TLS_KEY_FILE` / `PI_WS_TLS_CERT_FILE` — enable HTTPS / WSS with TLS
-  key and certificate PEM files
-- `PI_WS_TLS_CA_FILE` — optional CA bundle
-- `PI_WS_TLS_PASSPHRASE` — optional private-key passphrase
-- `PI_WS_TLS_DH_PARAMS_FILE` — optional DH params file
-- `PI_WS_TLS_CIPHERS` — optional OpenSSL cipher suite override
-- `PI_WS_TLS_PREFER_LOW_MEMORY_USAGE` — optional TLS memory tuning flag
-- `PI_WS_AUTH_TOKEN` — optional shared secret that enables the reference token
-  auth hook for the built-in `/ws/pi` route
-- `PI_WS_AUTH_HEADER` — header checked by token auth, default
-  `authorization`
-- `PI_WS_AUTH_SCHEME` — auth scheme prefix, default `Bearer`
-- `PI_WS_AUTH_QUERY_PARAM` — optional query-string token parameter for browser
-  WebSocket clients
-- `PI_WS_AUTH_REALM` — optional `WWW-Authenticate` realm
-- `PI_WS_PI_COMMAND` — optional pi command override; bundled pi is used by
-  default
-- `PI_WS_PI_ARGS` — extra raw pi args appended after generated flags; use
-  whitespace separated args or a JSON string array
-- `PI_WS_PI_CWD` — optional pi subprocess working directory
-- `PI_WS_PI_AGENT_DIR` — optional `PI_CODING_AGENT_DIR` override for shipping
-  custom Pi resources with your app
-- `PI_WS_PI_PROVIDER` — optional pi provider, such as `openai`
-- `PI_WS_PI_MODEL` — optional pi model pattern or ID
-- `PI_WS_PI_THINKING` — optional pi thinking level
-- `PI_WS_PI_NAME` — optional session display name
-- `PI_WS_PI_SYSTEM_PROMPT` — replace Pi’s system prompt
-- `PI_WS_PI_APPEND_SYSTEM_PROMPT` — one extra system prompt string or a JSON
-  string array of repeated append prompts
-- `PI_WS_PI_EXTENSIONS` — one extension source or a JSON string array of
-  repeated `--extension` flags
-- `PI_WS_PI_PROMPT_TEMPLATES` — one prompt template path or a JSON string
-  array of repeated `--prompt-template` flags
-
-## Extensibility
-
-The extension surface stays small on purpose:
-
-- `tls` switches the server from `App()` to `SSLApp()` and keeps the rest of
-  the API unchanged.
-- `addHook('onRequest', hook)` runs async-capable pre-upgrade checks for the
-  built-in Pi bridge route.
-- `addHook('onAuth', hook)` authenticates the built-in Pi bridge route from
-  upgrade metadata or from the reserved first websocket message.
-- `createStaticTokenAuthHook()` gives you a ready-made shared-secret auth hook
-  and a concrete example for writing your own hook-based auth.
-- `StaticTokenAuthorizer` remains available when you want the same token policy
-  for synchronous HTTP helpers such as `protectHttpHandler()`.
-- `protectHttpHandler()` and `protectWebSocketBehavior()` let you reuse the
-  same auth logic on your own routes. WebSocket hooks can later read their
-  stored session/context via `getWebSocketContext()` or `getWebSocketSession()`.
-- `pi.agentDir`, `pi.systemPrompt`, `pi.appendSystemPrompt`,
-  `pi.extensions`, and `pi.promptTemplates` map directly to Pi’s documented
-  customization mechanisms instead of inventing a parallel plugin system.
-
-Planned hook lifecycle additions:
-
-- `onConnect` after the socket is upgraded and context is available.
-- `onMessage` before a client payload is forwarded to Pi.
-- `onPiEvent` before a Pi event is sent to the websocket client.
-- `onClose` after socket shutdown for cleanup and audit.
-- `onError` for protocol and Pi process errors.
-
-Example: protect the built-in Pi route and one custom HTTP route with the same
-token policy:
-
-```ts
-import {
-  createStaticTokenAuthHook,
-  PiWs,
-  protectHttpHandler,
-  StaticTokenAuthorizer,
-} from 'pi-ws';
-
-const tokenHook = createStaticTokenAuthHook({
-  token: 'change-me',
-  queryParam: 'token',
-  createSession: async () => ({ role: 'user' }),
-});
-
-const pipe = new PiWs({
-  chatExample: false,
-});
-
-pipe.addHook('onAuth', tokenHook);
-
-const authorize = new StaticTokenAuthorizer({
-  token: 'change-me',
-  queryParam: 'token',
-}).authorize;
-
-pipe.handle({
-  method: 'get',
-  path: '/api/private',
-  handler: protectHttpHandler({
-    handler: (res) => {
-      res.end('ok');
-    },
-    authorize,
-  }),
-});
-
-await pipe.listen();
+```text
+http://127.0.0.1:8787/examples/chat/
 ```
+
+The guided chat launcher:
+
+```bash
+pnpm example:chat
+```
+
+See [examples/README.md](examples/README.md) for provider keys, base URL
+configuration, auth, artifact previews, and sandbox directories.
+
+## Development
+
+```bash
+mise install
+pnpm install
+pnpm test
+```
+
+Useful scripts:
+
+- `pnpm dev` - watch-mode binary entrypoint
+- `pnpm demo` - run the local demo server
+- `pnpm build` - build Node output and generated API docs
+- `pnpm build:docs` - regenerate API docs
+- `pnpm lint` - type, style, and dependency audit checks
+- `pnpm test` - lint and unit tests
 
 ## Architecture
 
-`pi-ws` keeps the server surface intentionally small:
+Route registration order:
 
-- built-in HTTP route: `/healthz`
-- built-in WebSocket route: `/ws/pi`
-- optional built-in static example: `/examples/chat/`
-- user extension points: `handle()`, `route()`, and `use()`
-
-At runtime, each client connected to `/ws/pi` gets a dedicated local Pi
-subprocess running in RPC mode. Incoming WebSocket text frames must be JSON
-objects. `pi-ws` validates them, converts them to JSONL commands, and forwards
-them to Pi over stdin. Pi stdout is read as UTF-8 JSONL, parsed back into JSON
-objects, and sent to the client as WebSocket text frames. Pi stderr and bridge
-lifecycle changes are exposed as `pi_ws_*` events.
-
-Route registration order is:
-
-1. built-in health route
-2. optional built-in chat example routes
-3. built-in Pi RPC websocket route
+1. built-in `/healthz`
+2. optional `/examples/chat/`
+3. built-in `${wsPrefix}/pi`
 4. user HTTP routes added with `handle()`
 5. user WebSocket routes added with `route()`
 6. low-level installers added with `use()`
-7. final catch-all 404 route
+7. final catch-all 404
 
 ```mermaid
 flowchart TD
     Client[Browser or WS client]
-    UWS[uWebSockets.js websocket]
-    Bridge[Pi bridge]
-    Pi[Pi CLI in RPC mode]
+    UWS[uWebSockets.js]
+    Bridge[pi-ws bridge]
+    Pi[Pi CLI RPC subprocess]
 
-    Client -->|WS text JSON to /ws/pi| UWS
+    Client -->|WS text JSON| UWS
     UWS -->|message event| Bridge
     Bridge -->|stdin JSONL| Pi
     Pi -->|stdout JSONL| Bridge
-    Pi -->|stderr and exit| Bridge
-    Bridge -->|ws.send JSON text| UWS
-    UWS -->|WS frames| Client
+    Pi -->|stderr and lifecycle| Bridge
+    Bridge -->|WS text and binary frames| UWS
+    UWS -->|frames| Client
 ```
 
-Example embedded usage:
+## License
 
-```ts
-import { PiWs } from 'pi-ws';
-
-const pipe = new PiWs();
-
-pipe.handle({
-  method: 'get',
-  path: '/api/version',
-  handler: (res) => {
-    res
-      .writeHeader('content-type', 'application/json')
-      .end(JSON.stringify({ version: '1.0.0' }));
-  },
-});
-
-pipe.route({
-  path: '/ws/echo',
-  behavior: {
-    message(ws, message, isBinary) {
-      ws.send(message, isBinary);
-    },
-  },
-});
-
-pipe.use((app) => {
-  app.get('/internal/ping', (res) => {
-    res.end('pong');
-  });
-});
-
-await pipe.listen();
-```
+[MIT](LICENSE)
