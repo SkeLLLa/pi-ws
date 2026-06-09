@@ -208,7 +208,7 @@ function buildOffModeEnvironment({
   sandbox: PiWsSandboxConfig;
 }): Readonly<Record<string, string>> {
   const env = {
-    ...pi.env,
+    ...pickPiEnvironmentForPolicy({ pi, sandbox }),
     ...sandbox.env,
   };
 
@@ -240,19 +240,10 @@ function buildSandboxEnvironment({
   sessionRoot: string;
   tmpDir: string;
 }): Readonly<Record<string, string>> {
-  const env =
-    sandbox.envPolicy === 'inherit'
-      ? { ...pi.env }
-      : sandbox.envPolicy === 'allowlist'
-        ? pickEnvironment(pi.env, [
-            ...ALWAYS_INCLUDED_ENV,
-            ...sandbox.envAllowlist,
-          ])
-        : pickEnvironment(pi.env, [
-            ...ALWAYS_INCLUDED_ENV,
-            ...MINIMAL_ENV_ALLOWLIST,
-            ...sandbox.envAllowlist,
-          ]);
+  const env = {
+    ...pickPiEnvironmentForPolicy({ pi, sandbox }),
+    ...sandbox.env,
+  };
 
   env['HOME'] = homeDir;
   env['TMPDIR'] = tmpDir;
@@ -276,11 +267,32 @@ function buildSandboxEnvironment({
     env['PI_WS_ARTIFACT_DIR'] = artifactDir;
   }
 
-  for (const [key, value] of Object.entries(sandbox.env)) {
-    env[key] = value;
+  return env;
+}
+
+function pickPiEnvironmentForPolicy({
+  pi,
+  sandbox,
+}: {
+  pi: PiProcessConfig;
+  sandbox: PiWsSandboxConfig;
+}): Record<string, string> {
+  if (sandbox.envPolicy === 'inherit') {
+    return { ...pi.env };
   }
 
-  return env;
+  if (sandbox.envPolicy === 'allowlist') {
+    return pickEnvironment(pi.env, [
+      ...ALWAYS_INCLUDED_ENV,
+      ...sandbox.envAllowlist,
+    ]);
+  }
+
+  return pickEnvironment(pi.env, [
+    ...ALWAYS_INCLUDED_ENV,
+    ...MINIMAL_ENV_ALLOWLIST,
+    ...sandbox.envAllowlist,
+  ]);
 }
 
 function buildPromptHints({
@@ -305,6 +317,7 @@ function buildPromptHints({
         'When writing code, read the destination from PI_WS_ARTIFACT_DIR or use the exact absolute artifact directory above.',
         'Do not invent relative artifact paths such as ./artifacts, ../artifacts, cwd/artifacts, output/artifacts, or a nested directory named after the session id.',
         'Do not rely on GUI display calls, browser-only display helpers, pi.show, plt.show, or other interactive viewers for artifacts; produce real files instead.',
+        'If a command fails because a tool or language package is missing, treat that as recoverable: install the dependency into the sandbox using the language package manager or a sandbox-local virtual environment, then retry. If installation is unavailable, use a dependency-free fallback that still writes the requested artifact file.',
         'In the final response, be concise: state that the artifact was created and mention only the generated filename after it has been fully written inside PI_WS_ARTIFACT_DIR.',
         'Do not print absolute artifact paths, local filesystem paths, code blocks containing paths, or generic follow-up offers for artifacts because the websocket client displays and links them separately.',
       ].join(' '),
@@ -321,7 +334,7 @@ function buildPromptHints({
       `Your working directory is ${piCwd ?? '(unset)'}. Only use files inside the explicitly allowed directories. Allowed read directories: ${formatPromptDirList(sandbox.allowReadDirs)}. Allowed write directories: ${formatPromptDirList(writable)}.`,
     );
     hints.push(
-      'Package caches, tool configs, and temporary files must stay inside HOME, TMPDIR, or the artifact directory. Do not write to system locations or the server workspace.',
+      'Package installs, package caches, virtual environments, tool configs, and temporary files must stay inside HOME, TMPDIR, the session root, or the artifact directory. Do not write to system locations or the server workspace. If a dependency is missing, install it inside those writable sandbox locations or use a no-dependency fallback rather than asking the user to run code elsewhere.',
     );
   }
 

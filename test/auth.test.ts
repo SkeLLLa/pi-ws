@@ -8,6 +8,7 @@ import {
   getWebSocketContext,
   getWebSocketSession,
   protectWebSocketBehavior,
+  StaticTokenAuthorizer,
 } from '../src/server/auth.js';
 import type {
   AuthorizationRequest,
@@ -61,6 +62,23 @@ void test('createStaticTokenAuthHook accepts configured query token', async () =
       )
     )?.authorized !== false,
     true,
+  );
+});
+
+void test('StaticTokenAuthorizer accepts configured query token', () => {
+  const authorizer = new StaticTokenAuthorizer({
+    token: 'secret',
+    queryParam: 'token',
+  });
+
+  assert.deepEqual(
+    authorizer.authorize({
+      ...baseRequest,
+      query: 'token=secret',
+      url: '/ws/pi?token=secret',
+      queryParams: { token: 'secret' },
+    }),
+    { authorized: true },
   );
 });
 

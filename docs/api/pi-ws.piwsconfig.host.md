@@ -14,4 +14,4 @@ readonly host: string;
 
 ## Default Value
 
-`"0.0.0.0"` in the resolved runtime config
+`"127.0.0.1"` in the resolved runtime config

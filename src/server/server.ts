@@ -1,3 +1,4 @@
+import type { Logger } from 'pino';
 import {
   App,
   SSLApp,
@@ -6,9 +7,9 @@ import {
   type TemplatedApp,
   type us_listen_socket,
 } from 'uWebSockets.js';
-import { createArtifactLogger } from '../artifacts/logger.js';
 import { createPiWebSocketRoute } from '../ws/pi-route.js';
 import { createDefaultConfig } from './config.js';
+import { createPiWsLogger, createPiWsLoggerCacheKey } from './logger.js';
 import { ChatExampleRoutes } from './static.js';
 import type {
   AuthHook,
@@ -19,6 +20,7 @@ import type {
   PiWsArtifactOptions,
   PiWsConfig,
   PiWsHookName,
+  PiWsHooks,
   PiWsListenOptions,
   PiWsOptions,
   PiWsSandboxOptions,
@@ -49,6 +51,8 @@ export class PiWs<Session = unknown> {
   readonly #wsRoutes: WebSocketRoute[] = [];
   readonly #installers: RouteInstaller[] = [];
 
+  #logger: Logger | undefined;
+  #loggerCacheKey: string | undefined;
   #server: RunningServer | undefined;
 
   /**
@@ -324,6 +328,11 @@ export class PiWs<Session = unknown> {
       host: options.host ?? this.#config.host,
       port: options.port ?? this.#config.port,
     };
+    warnUnsafeRuntimeConfig({
+      config: this.#config,
+      host: config.host,
+      logger: this.#getLogger().child({ component: 'server' }),
+    });
 
     this.#server = await listen({ app, host: config.host, port: config.port });
     return this.#server;
@@ -351,6 +360,7 @@ export class PiWs<Session = unknown> {
    */
   createApp(): TemplatedApp {
     const app = createUwsApp(this.#config);
+    const logger = this.#getLogger();
 
     installHealthRoute(app);
     if (this.#config.chatExample) {
@@ -361,7 +371,7 @@ export class PiWs<Session = unknown> {
       `${this.#config.wsPrefix}/pi`,
       createPiWebSocketRoute<Session>({
         artifacts: this.#config.artifacts,
-        logger: createArtifactLogger(this.#config.artifacts),
+        logger,
         pi: this.#config.pi,
         maxPayloadBytes: this.#config.maxPayloadBytes,
         sandbox: this.#config.sandbox,
@@ -385,6 +395,16 @@ export class PiWs<Session = unknown> {
 
     installNotFoundRoute(app);
     return app;
+  }
+
+  #getLogger(): Logger {
+    const cacheKey = createPiWsLoggerCacheKey(this.#config.artifacts);
+    if (this.#logger === undefined || this.#loggerCacheKey !== cacheKey) {
+      this.#logger = createPiWsLogger(this.#config.artifacts);
+      this.#loggerCacheKey = cacheKey;
+    }
+
+    return this.#logger;
   }
 }
 
@@ -424,6 +444,7 @@ function mergeConfig<Session>({
   override: PiWsOptions<Session>;
 }): PiWsConfig<Session> {
   const tls = mergeTlsConfig({ base: base.tls, override: override.tls });
+  const piHooks = mergePiHooks(base.piHooks, override.piHooks);
 
   return {
     ...base,
@@ -440,7 +461,22 @@ function mergeConfig<Session>({
       ...base.sandbox,
       ...override.sandbox,
     },
+    ...(piHooks === undefined ? {} : { piHooks }),
     ...(tls === undefined ? {} : { tls }),
+  };
+}
+
+function mergePiHooks<Session>(
+  base: PiWsConfig<Session>['piHooks'],
+  override: PiWsOptions<Session>['piHooks'],
+): PiWsHooks<Session> | undefined {
+  if (base === undefined && override === undefined) {
+    return undefined;
+  }
+
+  return {
+    onRequest: [...(base?.onRequest ?? []), ...(override?.onRequest ?? [])],
+    onAuth: [...(base?.onAuth ?? []), ...(override?.onAuth ?? [])],
   };
 }
 
@@ -589,4 +625,44 @@ function createRunningServer({
       app.close();
     },
   };
+}
+
+function warnUnsafeRuntimeConfig<Session>({
+  config,
+  host,
+  logger,
+}: {
+  config: PiWsConfig<Session>;
+  host: string;
+  logger: Logger;
+}): void {
+  if (!isLoopbackHost(host)) {
+    logger.warn(
+      { host },
+      'server is binding to a non-loopback host; configure auth hooks or network controls when exposing the Pi websocket route',
+    );
+  }
+
+  if (config.sandbox.mode === 'off') {
+    logger.warn(
+      { sandboxMode: config.sandbox.mode },
+      'sandbox mode is off; Pi subprocesses are not isolated',
+    );
+  }
+
+  if (config.sandbox.mode === 'process') {
+    logger.warn(
+      { sandboxMode: config.sandbox.mode },
+      'sandbox mode process is advisory only; use system mode with an OS sandbox for isolation',
+    );
+  }
+}
+
+function isLoopbackHost(host: string): boolean {
+  return (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '::1' ||
+    host.startsWith('127.')
+  );
 }

@@ -1,7 +1,7 @@
 import pinoFactory, { destination, stdTimeFunctions, type Logger } from 'pino';
-import type { PiWsArtifactConfig } from '../server/types.js';
+import type { PiWsArtifactConfig } from './types.js';
 
-export function createArtifactLogger(config: PiWsArtifactConfig): Logger {
+export function createPiWsLogger(config: PiWsArtifactConfig): Logger {
   return pinoFactory(
     {
       base: { service: 'pi-ws' },
@@ -17,4 +17,8 @@ export function createArtifactLogger(config: PiWsArtifactConfig): Logger {
           sync: false,
         }),
   );
+}
+
+export function createPiWsLoggerCacheKey(config: PiWsArtifactConfig): string {
+  return `${config.logLevel}\0${config.logFile ?? ''}`;
 }

@@ -1,4 +1,6 @@
 import { Buffer } from 'node:buffer';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import type { Logger } from 'pino';
 import type {
   HttpRequest,
   HttpResponse,
@@ -121,7 +123,7 @@ export class StaticTokenAuthorizer {
 
     if (
       this.#queryParam !== undefined &&
-      request.queryParams[this.#queryParam] === this.#token
+      secureTokenEquals(request.queryParams[this.#queryParam], this.#token)
     ) {
       return AUTHORIZED;
     }
@@ -223,6 +225,7 @@ export function protectWebSocketBehavior<UserData, Session = unknown>({
   hooks = [],
   authHooks = [],
   createUserData,
+  logger,
 }: {
   behavior: Omit<WebSocketBehavior<UserData>, 'upgrade'>;
   hooks?: readonly RequestHook<Session>[];
@@ -231,6 +234,7 @@ export function protectWebSocketBehavior<UserData, Session = unknown>({
     request: AuthorizationRequest,
     context: WebSocketConnectionContext<Session>,
   ) => UserData;
+  logger?: Logger;
 }): WebSocketBehavior<UserData> {
   if (hooks.length === 0 && authHooks.length === 0) {
     return behavior;
@@ -268,16 +272,12 @@ export function protectWebSocketBehavior<UserData, Session = unknown>({
       }).catch((error: unknown) => {
         if (upgradeState.aborted) return;
 
+        logger?.error({ err: error }, 'pi-ws websocket upgrade hook failed');
         rejectRequest(
           res,
           unauthorized({
             status: '500 Internal Server Error',
-            body: JSON.stringify({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : 'websocket upgrade hook failed',
-            }),
+            body: JSON.stringify({ error: 'websocket_upgrade_failed' }),
           }),
         );
       });
@@ -479,8 +479,23 @@ function matchesHeaderToken(
   scheme: string,
 ): boolean {
   const normalized = headerValue.trim();
-  if (normalized === token) return true;
-  return normalized === `${scheme} ${token}`;
+  if (secureTokenEquals(normalized, token)) return true;
+  return secureTokenEquals(normalized, `${scheme} ${token}`);
+}
+
+function secureTokenEquals(
+  candidate: string | undefined,
+  token: string,
+): boolean {
+  if (candidate === undefined) return false;
+
+  const candidateHash = hashToken(candidate);
+  const tokenHash = hashToken(token);
+  return timingSafeEqual(candidateHash, tokenHash);
+}
+
+function hashToken(value: string): Buffer {
+  return createHash('sha256').update(value, 'utf8').digest();
 }
 
 function extractHeaderToken(

@@ -20,6 +20,7 @@ export declare function protectWebSocketBehavior<
     request: AuthorizationRequest,
     context: WebSocketConnectionContext<Session>,
   ) => UserData;
+  logger?: Logger;
 }): WebSocketBehavior<UserData>;
 ```
 
@@ -40,7 +41,7 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-{ behavior, hooks, authHooks, createUserData, }
+{ behavior, hooks, authHooks, createUserData, logger, }
 
 </td><td>
 
@@ -55,7 +56,7 @@ input
 
 </td><td>
 
-{ behavior: Omit&lt;WebSocketBehavior&lt;UserData&gt;, 'upgrade'&gt;; hooks?: readonly [RequestHook](./pi-ws.requesthook.md)<!-- -->&lt;Session&gt;\[\]; authHooks?: readonly [AuthHook](./pi-ws.authhook.md)<!-- -->&lt;Session&gt;\[\]; createUserData?: (request: [AuthorizationRequest](./pi-ws.authorizationrequest.md)<!-- -->, context: [WebSocketConnectionContext](./pi-ws.websocketconnectioncontext.md)<!-- -->&lt;Session&gt;) =&gt; UserData; }
+{ behavior: Omit&lt;WebSocketBehavior&lt;UserData&gt;, 'upgrade'&gt;; hooks?: readonly [RequestHook](./pi-ws.requesthook.md)<!-- -->&lt;Session&gt;\[\]; authHooks?: readonly [AuthHook](./pi-ws.authhook.md)<!-- -->&lt;Session&gt;\[\]; createUserData?: (request: [AuthorizationRequest](./pi-ws.authorizationrequest.md)<!-- -->, context: [WebSocketConnectionContext](./pi-ws.websocketconnectioncontext.md)<!-- -->&lt;Session&gt;) =&gt; UserData; logger?: Logger; }
 
 </td><td>
 

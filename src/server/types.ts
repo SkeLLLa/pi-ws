@@ -718,7 +718,7 @@ export interface PiWsConfig<Session = unknown> {
   /**
    * Host or IP address to bind the HTTP/WebSocket server to.
    *
-   * @defaultValue `"0.0.0.0"` in the resolved runtime config
+   * @defaultValue `"127.0.0.1"` in the resolved runtime config
    */
   readonly host: string;
   /**

@@ -18,7 +18,7 @@ import type {
   PiWsTlsConfig,
 } from './types.js';
 
-const DEFAULT_HOST = '0.0.0.0';
+const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8787;
 const DEFAULT_WS_PREFIX = '/ws';
 const DEFAULT_MAX_PAYLOAD_BYTES = 1024 * 1024;
@@ -27,7 +27,7 @@ const DEFAULT_ARTIFACTS_CHUNK_SIZE_BYTES = 256 * 1024;
 const DEFAULT_ARTIFACTS_SCAN_INTERVAL_MS = 500;
 const DEFAULT_ARTIFACTS_STABILITY_WINDOW_MS = 500;
 const DEFAULT_ARTIFACTS_LOG_LEVEL = 'silent';
-const DEFAULT_SANDBOX_MODE = 'off';
+const DEFAULT_SANDBOX_MODE = 'process';
 const DEFAULT_SANDBOX_ENV_POLICY = 'minimal';
 
 /**
@@ -279,7 +279,7 @@ class ConfigResolver {
       ...mergeOptionalObject(base, override, 'artifacts'),
       ...mergeOptionalObject(base, override, 'sandbox'),
       ...mergeOptionalObject(base, override, 'tls'),
-      ...mergeOptionalObject(base, override, 'piHooks'),
+      ...mergePiHooks(base.piHooks, override.piHooks),
     };
   }
 
@@ -572,7 +572,7 @@ function mergePiOptions(
 }
 
 function mergeOptionalObject<
-  Key extends 'artifacts' | 'piHooks' | 'sandbox' | 'tls',
+  Key extends 'artifacts' | 'sandbox' | 'tls',
   Value extends PiWsOptions[Key],
 >(
   base: PiWsOptions,
@@ -583,6 +583,22 @@ function mergeOptionalObject<
   return value === undefined
     ? {}
     : ({ [key]: value } as Partial<Record<Key, Value>>);
+}
+
+function mergePiHooks<Session = unknown>(
+  base: PiWsOptions<Session>['piHooks'],
+  override: PiWsOptions<Session>['piHooks'],
+): Pick<PiWsOptions<Session>, 'piHooks'> | Record<string, never> {
+  if (base === undefined && override === undefined) {
+    return {};
+  }
+
+  return {
+    piHooks: {
+      onRequest: [...(base?.onRequest ?? []), ...(override?.onRequest ?? [])],
+      onAuth: [...(base?.onAuth ?? []), ...(override?.onAuth ?? [])],
+    },
+  };
 }
 
 function parsePort(value: string | undefined): number | undefined {

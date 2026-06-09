@@ -131,7 +131,7 @@ Wraps an HTTP handler with synchronous request authorization.
 </td></tr>
 <tr><td>
 
-[protectWebSocketBehavior({ behavior, hooks, authHooks, createUserData, }, input)](./pi-ws.protectwebsocketbehavior.md)
+[protectWebSocketBehavior({ behavior, hooks, authHooks, createUserData, logger, }, input)](./pi-ws.protectwebsocketbehavior.md)
 
 </td><td>
 

@@ -11,7 +11,7 @@ browser/client  ──ws──▶  pi-ws  ──rpc──▶  pi agent (rpc mode
 Default endpoint:
 
 ```text
-ws://0.0.0.0:8787/ws/pi
+ws://127.0.0.1:8787/ws/pi
 ```
 
 Clients send pi RPC JSON objects as text WebSocket frames. pi-ws validates
@@ -145,6 +145,8 @@ HTTP routes, `route()` for WebSocket routes, and `use()` for direct
 pre-upgrade request checks, `addHook('onAuth', ...)` for authentication, and
 `protectHttpHandler()` /
 `protectWebSocketBehavior()` to reuse the same auth logic on your own routes.
+Authentication is not enabled by default; `createStaticTokenAuthHook()` and
+`StaticTokenAuthorizer` are reference implementations you can opt into.
 
 Browser clients that cannot send WebSocket upgrade headers can authenticate as
 their first message:
@@ -413,7 +415,7 @@ pi-ws
 
 ### Env Overrides
 
-- `PI_WS_HOST` — bind host, default `0.0.0.0`
+- `PI_WS_HOST` — bind host, default `127.0.0.1`
 - `PI_WS_PORT` — bind port, default `8787`
 - `PI_WS_PREFIX` — WebSocket prefix, default `/ws`
 - `PI_WS_MAX_PAYLOAD_BYTES` — max inbound frame size, default `1048576`
@@ -424,7 +426,8 @@ pi-ws
 - `PI_WS_TLS_DH_PARAMS_FILE` — optional DH params file
 - `PI_WS_TLS_CIPHERS` — optional OpenSSL cipher suite override
 - `PI_WS_TLS_PREFER_LOW_MEMORY_USAGE` — optional TLS memory tuning flag
-- `PI_WS_AUTH_TOKEN` — shared secret for the built-in `/ws/pi` route
+- `PI_WS_AUTH_TOKEN` — optional shared secret that enables the reference token
+  auth hook for the built-in `/ws/pi` route
 - `PI_WS_AUTH_HEADER` — header checked by token auth, default
   `authorization`
 - `PI_WS_AUTH_SCHEME` — auth scheme prefix, default `Bearer`

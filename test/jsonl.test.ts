@@ -27,6 +27,23 @@ void test('JsonlSplitter preserves UTF-8 characters split across chunks', () => 
   ]);
 });
 
+void test('JsonlSplitter flushes a final partial line', () => {
+  const splitter = new JsonlSplitter();
+
+  assert.deepEqual(splitter.push(Buffer.from('{"message":"partial"}')), []);
+  assert.deepEqual(splitter.flush(), ['{"message":"partial"}']);
+  assert.deepEqual(splitter.flush(), []);
+});
+
+void test('JsonlSplitter rejects over-sized lines', () => {
+  const splitter = new JsonlSplitter({ maxLineBytes: 4 });
+
+  assert.throws(
+    () => splitter.push(Buffer.from('12345')),
+    /JSONL line exceeds max size/u,
+  );
+});
+
 void test('parseJsonObject rejects non-object JSON', () => {
   assert.deepEqual(parseJsonObject('{"type":"get_state"}'), {
     type: 'get_state',

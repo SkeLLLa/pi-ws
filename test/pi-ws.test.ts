@@ -112,6 +112,12 @@ void test('PiWs exposes composable configuration helpers', () => {
   assert.equal(config.sandbox.mode, 'process');
 });
 
+void test('PiWs does not enable auth hooks by default', () => {
+  const pipe = new PiWs({ chatExample: false });
+
+  assert.equal(pipe.getConfig().piHooks, undefined);
+});
+
 void test('PiWs stores typed built-in route hooks in config', () => {
   const pipe = new PiWs<{ userId: string }>({ chatExample: false }).addHook(
     'onAuth',

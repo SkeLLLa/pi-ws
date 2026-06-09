@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config as loadDotenv } from 'dotenv';
 import { createStaticTokenAuthHook, PiWs } from '../dist/index.js';
+import { createExampleLogger } from './logger.mjs';
 
 const providerApiKeyEnv = {
   anthropic: 'ANTHROPIC_API_KEY',
@@ -20,6 +21,7 @@ const providerBaseUrlEnv = {
 };
 
 const root = resolve(import.meta.dirname, '..');
+const logger = createExampleLogger('pi-ws-chat-example');
 
 loadEnvFiles(root);
 
@@ -105,30 +107,42 @@ if (authToken !== undefined && authToken !== '') {
 
 const server = await pipe.listen();
 
-console.log(
-  `pi-ws example: http://${host}:${String(server.port)}/examples/chat/`,
+logger.info(
+  {
+    artifactDir,
+    artifactLogFile,
+    chatUrl: `http://${host}:${String(server.port)}/examples/chat/`,
+    model: model ?? '(Pi default for provider)',
+    provider,
+    sandboxDir,
+    sandboxMode,
+    websocketUrl: `ws://${host}:${String(server.port)}/ws/pi`,
+  },
+  'pi-ws chat example listening',
 );
-console.log(`pi rpc websocket: ws://${host}:${String(server.port)}/ws/pi`);
-console.log(`provider: ${provider}`);
-console.log(`model: ${model ?? '(Pi default for provider)'}`);
-console.log(`artifact dir: ${artifactDir}`);
-console.log(`artifact log: ${artifactLogFile}`);
-console.log(`sandbox mode: ${sandboxMode}`);
-console.log(`sandbox dir: ${sandboxDir}`);
 if (authToken !== undefined && authToken !== '') {
-  console.log(`auth: enabled with PI_WS_AUTH_TOKEN`);
-  console.log(
-    `browser auth: send {"type":"pi_ws_auth","token":"..." } as the first message`,
-  );
-  console.log(
-    `query auth: ws://${host}:${String(server.port)}/ws/pi?${authQueryParam}=...`,
+  logger.info(
+    {
+      authQueryParam,
+      browserAuth: 'send {"type":"pi_ws_auth","token":"..." } first',
+      queryAuthUrl: `ws://${host}:${String(server.port)}/ws/pi?${authQueryParam}=...`,
+    },
+    'auth enabled with PI_WS_AUTH_TOKEN',
   );
 }
 if (baseUrl !== undefined && baseUrl !== '') {
-  console.log(`base url: ${baseUrl}`);
-  console.log(`pi config dir: ${process.env.PI_CODING_AGENT_DIR}`);
+  logger.info(
+    {
+      baseUrl,
+      piConfigDir: process.env.PI_CODING_AGENT_DIR,
+    },
+    'custom provider base URL configured',
+  );
 }
-console.log(`try a prompt like: draw a graph of pirate counts by century`);
+logger.info(
+  { prompt: 'draw a graph of pirate counts by century' },
+  'try this prompt',
+);
 
 const stop = () => {
   pipe.close();

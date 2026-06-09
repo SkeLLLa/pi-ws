@@ -186,12 +186,6 @@ function handlePiEvent(event) {
       appendSystem(
         `Session ready: ${event.sessionId ?? '(missing session id)'}`,
       );
-      if (event.artifactDir) {
-        appendSystem(`Artifact directory: ${event.artifactDir}`);
-      }
-      if (event.sandboxCwd) {
-        appendSystem(`Sandbox cwd: ${event.sandboxCwd}`);
-      }
       sendCommand({ id: nextRequestId(), type: 'get_state' });
       break;
     case 'pi_ws_session':
@@ -698,9 +692,22 @@ function renderSessionInfo(event = undefined) {
   sessionInfo.replaceChildren(
     buildSessionInfoRow('Session', event.sessionId ?? '(missing)'),
     buildSessionInfoRow('Connection', event.connectionId ?? '(missing)'),
-    buildSessionInfoRow('Artifacts', event.artifactDir ?? '(disabled)'),
-    buildSessionInfoRow('Sandbox cwd', event.sandboxCwd ?? '(unset)'),
+    buildSessionInfoRow('Artifacts', formatArtifactsStatus(event)),
+    buildSessionInfoRow('Sandbox', formatSandboxStatus(event)),
   );
+}
+
+function formatArtifactsStatus(event) {
+  if (event.type === 'pi_ws_session') return '(pending)';
+  if (event.artifactsEnabled === false) return 'disabled';
+  return event.artifactDirName === undefined
+    ? 'enabled'
+    : `enabled (${event.artifactDirName})`;
+}
+
+function formatSandboxStatus(event) {
+  if (event.type === 'pi_ws_session') return '(pending)';
+  return event.sandboxMode ?? '(unknown)';
 }
 
 function buildSessionInfoRow(label, value) {

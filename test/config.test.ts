@@ -10,7 +10,7 @@ void test('loadConfig applies defaults', async () => {
     packageJson: false,
   });
 
-  assert.equal(config.host, '0.0.0.0');
+  assert.equal(config.host, '127.0.0.1');
   assert.equal(config.port, 8787);
   assert.equal(config.wsPrefix, '/ws');
   assert.deepEqual(config.pi.args, []);
@@ -18,8 +18,27 @@ void test('loadConfig applies defaults', async () => {
   assert.equal(config.artifacts.maxFileBytes, 25 * 1024 * 1024);
   assert.equal(config.artifacts.chunkSizeBytes, 256 * 1024);
   assert.equal(config.artifacts.logLevel, 'silent');
-  assert.equal(config.sandbox.mode, 'off');
+  assert.equal(config.sandbox.mode, 'process');
   assert.equal(config.sandbox.envPolicy, 'minimal');
+});
+
+void test('loadConfig composes env auth hooks with override auth hooks', async () => {
+  const overrideAuthHook = () => ({ authorized: true }) as const;
+  const config = await loadConfig({
+    env: {
+      PI_WS_AUTH_TOKEN: 'secret',
+    },
+    overrides: {
+      piHooks: {
+        onAuth: [overrideAuthHook],
+      },
+    },
+    dotenv: false,
+    rcFile: false,
+    packageJson: false,
+  });
+
+  assert.equal(config.piHooks?.onAuth?.length, 2);
 });
 
 void test('loadConfig parses env overrides', async () => {

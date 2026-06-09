@@ -4,7 +4,7 @@
 
 ```ts
 import { ConfigLayerMeta, DefineConfig, DotenvOptions } from 'c12';
-import type { LevelWithSilent } from 'pino';
+import type { LevelWithSilent, Logger } from 'pino';
 import {
   TemplatedApp,
   type AppOptions,
@@ -333,6 +333,7 @@ export function protectWebSocketBehavior<UserData, Session = unknown>(input: {
     request: AuthorizationRequest,
     context: WebSocketConnectionContext<Session>,
   ) => UserData;
+  logger?: Logger;
 }): WebSocketBehavior<UserData>;
 
 // @public

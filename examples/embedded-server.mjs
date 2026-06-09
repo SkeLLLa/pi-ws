@@ -5,10 +5,12 @@ import {
   protectHttpHandler,
   StaticTokenAuthorizer,
 } from '../dist/index.js';
+import { createExampleLogger } from './logger.mjs';
 
 const authToken = process.env.PI_WS_AUTH_TOKEN;
 const authQueryParam = process.env.PI_WS_AUTH_QUERY_PARAM ?? 'token';
 const root = resolve(import.meta.dirname, '..');
+const logger = createExampleLogger('pi-ws-embedded-example');
 const artifactDir =
   process.env.PI_WS_ARTIFACTS_DIR ??
   resolve(root, '.tmp/pi-ws-example/artifacts');
@@ -88,21 +90,24 @@ pipe.route({
 
 const server = await pipe.listen();
 
-console.log(`example listening on http://127.0.0.1:${String(server.port)}`);
-console.log(`pi rpc websocket: ws://127.0.0.1:${String(server.port)}/ws/pi`);
-console.log(
-  `chat example: http://127.0.0.1:${String(server.port)}/examples/chat/`,
+logger.info(
+  {
+    artifactDir,
+    artifactLogFile,
+    chatUrl: `http://127.0.0.1:${String(server.port)}/examples/chat/`,
+    serverUrl: `http://127.0.0.1:${String(server.port)}`,
+    sandboxDir,
+    websocketUrl: `ws://127.0.0.1:${String(server.port)}/ws/pi`,
+  },
+  'pi-ws embedded example listening',
 );
-console.log(`artifact dir: ${artifactDir}`);
-console.log(`artifact log: ${artifactLogFile}`);
-console.log(`sandbox dir: ${sandboxDir}`);
 if (authToken !== undefined && authToken !== '') {
-  console.log(`auth: enabled with PI_WS_AUTH_TOKEN`);
-  console.log(
-    `browser auth: send {"type":"pi_ws_auth","token":"..." } as the first message`,
-  );
-  console.log(
-    `private http route: http://127.0.0.1:${String(server.port)}/api/private`,
+  logger.info(
+    {
+      browserAuth: 'send {"type":"pi_ws_auth","token":"..." } first',
+      privateHttpRoute: `http://127.0.0.1:${String(server.port)}/api/private`,
+    },
+    'auth enabled with PI_WS_AUTH_TOKEN',
   );
 }
 

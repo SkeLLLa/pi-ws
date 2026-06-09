@@ -14,6 +14,7 @@ void test('preparePiLaunch injects artifact path and prompt hints in off mode', 
       args: ['--no-session'],
       env: {
         OPENAI_API_KEY: 'secret',
+        SECRET_SERVER_TOKEN: 'do-not-pass',
       },
     },
     sandbox: {
@@ -33,6 +34,8 @@ void test('preparePiLaunch injects artifact path and prompt hints in off mode', 
   assert.equal(launch.command, process.execPath);
   assert.equal(launch.cwd, undefined);
   assert.equal(launch.env['PI_WS_ARTIFACT_DIR'], '/tmp/artifacts/conn-1');
+  assert.equal(launch.env['OPENAI_API_KEY'], 'secret');
+  assert.equal(launch.env['SECRET_SERVER_TOKEN'], undefined);
   assert.equal(launch.env['EXTRA_ENV'], '1');
   assert.match(
     launch.promptHints[0] ?? '',
@@ -49,6 +52,8 @@ void test('preparePiLaunch injects artifact path and prompt hints in off mode', 
     launch.promptHints[0] ?? '',
     /Do not print absolute artifact paths/u,
   );
+  assert.match(launch.promptHints[0] ?? '', /tool or language package/u);
+  assert.match(launch.promptHints[0] ?? '', /dependency-free fallback/u);
   assert.match(launch.promptHints[0] ?? '', /generic follow-up offers/u);
   assert.match(launch.promptHints[0] ?? '', /pi\.show, plt\.show/u);
   assert.deepEqual(launch.resolvedCommandLine.slice(-1), ['--no-session']);
@@ -99,7 +104,52 @@ void test('preparePiLaunch builds minimal sandbox environment', () => {
     ]),
   );
   assert.match(launch.promptHints.join('\n'), /HOME, TMPDIR/u);
+  assert.match(launch.promptHints.join('\n'), /Package installs/u);
+  assert.match(launch.promptHints.join('\n'), /virtual environments/u);
+  assert.match(launch.promptHints.join('\n'), /no-dependency fallback/u);
   assert.doesNotMatch(launch.promptHints.join('\n'), /matplotlib/u);
+  assert.doesNotMatch(launch.promptHints.join('\n'), /MPLCONFIGDIR/u);
+});
+
+void test('preparePiLaunch prevents sandbox env from overriding isolation vars', () => {
+  const launch = preparePiLaunch({
+    artifactDir: '/tmp/artifacts/conn-protected-env',
+    connectionId: 'conn-protected-env',
+    logger,
+    pi: {
+      args: [],
+      env: {},
+    },
+    sandbox: {
+      mode: 'process',
+      cwd: '/tmp/pi-ws-sandbox',
+      allowReadDirs: [],
+      allowWriteDirs: [],
+      envPolicy: 'minimal',
+      envAllowlist: [],
+      env: {
+        HOME: '/unsafe/home',
+        PI_WS_SANDBOX_CWD: '/unsafe/cwd',
+        TMPDIR: '/unsafe/tmp',
+      },
+      denyServerDirectory: true,
+      args: [],
+    },
+    serverRoot: '/workspace/pi-ws',
+  });
+
+  assert.equal(
+    launch.env['HOME'],
+    '/tmp/pi-ws-sandbox/conn-protected-env/home',
+  );
+  assert.equal(
+    launch.env['PI_WS_SANDBOX_CWD'],
+    '/tmp/pi-ws-sandbox/conn-protected-env/cwd',
+  );
+  assert.equal(
+    launch.env['TMPDIR'],
+    '/tmp/pi-ws-sandbox/conn-protected-env/tmp',
+  );
 });
 
 void test('preparePiLaunch keeps package-specific env generic', () => {

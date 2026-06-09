@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { constants } from 'node:fs';
+import { open } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import type { Logger } from 'pino';
 import {
   DISABLED,
@@ -57,6 +58,7 @@ export function createPiWebSocketRoute<Session = unknown>(
 ): WebSocketBehavior<PiSocketData<Session>> {
   const authHooks = options.hooks?.onAuth ?? [];
   const authRequired = authHooks.length > 0;
+  const routeLogger = options.logger.child({ component: 'pi-route' });
 
   const behavior: WebSocketBehavior<PiSocketData<Session>> = {
     compression: DISABLED,
@@ -75,10 +77,9 @@ export function createPiWebSocketRoute<Session = unknown>(
       data.authenticated =
         !data.authRequired || data.context?.authenticated === true;
       data.authenticating = false;
-      options.logger.info(
+      routeLogger.info(
         {
           authRequired: data.authRequired,
-          component: 'pi-route',
           connectionId: data.connectionId,
           sessionId: data.sessionId,
         },
@@ -119,9 +120,8 @@ export function createPiWebSocketRoute<Session = unknown>(
     close(ws) {
       const data = ws.getUserData();
       data.closed = true;
-      options.logger.info(
+      routeLogger.info(
         {
-          component: 'pi-route',
           connectionId: data.connectionId,
           sessionId: data.sessionId,
         },
@@ -142,6 +142,7 @@ export function createPiWebSocketRoute<Session = unknown>(
     behavior,
     hooks: options.hooks.onRequest ?? [],
     authHooks,
+    logger: routeLogger,
     createUserData: (_request, context): PiSocketData<Session> => ({
       closed: false,
       connectionId: randomUUID(),
@@ -370,12 +371,13 @@ function startPeer<Session>({
 
   sendTextEvent(ws, {
     type: 'pi_ws_ready',
-    artifactDir: launch.artifactDir,
+    ...(launch.artifactDir === undefined
+      ? {}
+      : { artifactDirName: basename(launch.artifactDir) }),
+    artifactsEnabled: launch.artifactDir !== undefined,
     connectionId: data.connectionId,
     sandboxMode: options.sandbox.mode,
-    sandboxCwd: launch.cwd,
     sessionId: data.sessionId,
-    sessionRoot: launch.sessionRoot,
   });
 
   routeLogger.info(
@@ -437,7 +439,24 @@ async function sendArtifactOverWebSocket<Session>({
   logger: Logger;
   ws: WebSocket<PiSocketData<Session>>;
 }): Promise<void> {
-  const bytes = await readFile(artifact.absolutePath);
+  const file = await open(
+    artifact.absolutePath,
+    constants.O_RDONLY | constants.O_NOFOLLOW,
+  );
+  let bytes: Buffer;
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.size > config.maxFileBytes) {
+      throw new Error('Artifact exceeds configured max file size');
+    }
+
+    bytes = await file.readFile();
+    if (bytes.length > config.maxFileBytes) {
+      throw new Error('Artifact exceeds configured max file size');
+    }
+  } finally {
+    await file.close();
+  }
 
   logger.info(
     {

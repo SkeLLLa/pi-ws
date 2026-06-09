@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
-import { readdir, stat } from 'node:fs/promises';
-import { basename, join, relative } from 'node:path';
+import { lstat, readdir, realpath, stat } from 'node:fs/promises';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import type { Logger } from 'pino';
 import type { PiWsArtifactConfig } from '../server/types.js';
 import { detectMimeType } from './mime.js';
@@ -94,15 +94,20 @@ export class ArtifactManager {
 
     try {
       const now = Date.now();
-      const files = await walkFiles(this.#rootDir);
+      const rootDir = await realpath(this.#rootDir);
+      const files = await walkFiles(rootDir);
 
       for (const absolutePath of files) {
-        const info = await stat(absolutePath);
+        const realAbsolutePath = await realpath(absolutePath);
+        if (!isPathInsideDirectory(realAbsolutePath, rootDir)) continue;
+
+        const info = await stat(realAbsolutePath);
         if (!info.isFile()) continue;
         this.#trackFile({
-          absolutePath,
+          absolutePath: realAbsolutePath,
           mtimeMs: info.mtimeMs,
           now,
+          rootDir,
           size: info.size,
         });
       }
@@ -115,15 +120,21 @@ export class ArtifactManager {
     absolutePath,
     mtimeMs,
     now,
+    rootDir,
     size,
   }: {
     absolutePath: string;
     mtimeMs: number;
     now: number;
+    rootDir: string;
     size: number;
   }): void {
     const relativePath =
-      relative(this.#rootDir, absolutePath) || basename(absolutePath);
+      relative(rootDir, absolutePath) || basename(absolutePath);
+    if (!isPathInsideDirectory(absolutePath, rootDir)) {
+      return;
+    }
+
     const name = basename(absolutePath);
     const existing = this.#entries.get(absolutePath);
 
@@ -243,15 +254,28 @@ async function walkFiles(rootDir: string): Promise<string[]> {
     const entries = await readdir(current, { withFileTypes: true });
     for (const entry of entries) {
       const absolutePath = join(current, entry.name);
-      if (entry.isDirectory()) {
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
+
+      const info = await lstat(absolutePath);
+      if (info.isDirectory()) {
         queue.push(absolutePath);
         continue;
       }
-      if (entry.isFile()) {
+      if (info.isFile()) {
         files.push(absolutePath);
       }
     }
   }
 
   return files.sort();
+}
+
+function isPathInsideDirectory(path: string, directory: string): boolean {
+  const relativePath = relative(resolve(directory), resolve(path));
+  return (
+    relativePath === '' ||
+    (!relativePath.startsWith('..') && !isAbsolute(relativePath))
+  );
 }
