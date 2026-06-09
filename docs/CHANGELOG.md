@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/SkeLLLa/pi-ws/compare/v1.0.0...v1.0.1) (2026-06-09)
+
+### Fixes
+
+* bump version manually ([c422743](https://github.com/SkeLLLa/pi-ws/commit/c4227438a5f4c0dd0d472eda78e460a2d307c4b1))
+
 ## 1.0.0 (2026-06-09)
 
 ### Fixes
