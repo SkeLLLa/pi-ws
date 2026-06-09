@@ -6,6 +6,29 @@
 * better prompt and harden security a bit ([5151a64](https://github.com/SkeLLLa/pi-ws/commit/5151a64e2695934076e32290a14ad43bbf220948))
 * docs ([b7a7750](https://github.com/SkeLLLa/pi-ws/commit/b7a7750a44a4159d90204971480e1c649e0c7270))
 * docs and release tag ([604224f](https://github.com/SkeLLLa/pi-ws/commit/604224f50369eb7522ebdc81b75959c188d2ea42))
+* republish ([3cd8ca1](https://github.com/SkeLLLa/pi-ws/commit/3cd8ca1474b410fa2233329551db4a576b6e6637))
+* republish ([20cfc99](https://github.com/SkeLLLa/pi-ws/commit/20cfc998ed25a60d6f5e9552b16363d767161e8c))
+
+### Other
+
+* **release:** 1.1.0 [skip ci] ([04ee4b9](https://github.com/SkeLLLa/pi-ws/commit/04ee4b91f46c309af4df35529fad2a09da19e790))
+* **release:** 1.1.0 [skip ci] ([8f2b648](https://github.com/SkeLLLa/pi-ws/commit/8f2b648ea46edae63488e24ca862693c8fbc1541))
+* **release:** 1.1.0 [skip ci] ([783ccfa](https://github.com/SkeLLLa/pi-ws/commit/783ccfa1c3b5028ba1e73a3ad3bca1012b2e0c99))
+
+### Features
+
+* auth hooks ([1532eff](https://github.com/SkeLLLa/pi-ws/commit/1532eff85dee96ad2fe4fe87a127737ae603bb03))
+* auth, ssl, pi customizations ([8c46653](https://github.com/SkeLLLa/pi-ws/commit/8c4665341ac909086f7e2fb3e25fe46313038383))
+* improved sandbox and artifacts ([81b1324](https://github.com/SkeLLLa/pi-ws/commit/81b1324eed872b2a33b56a060864e7636f351577))
+
+## [1.1.0](https://github.com/SkeLLLa/pi-ws/compare/v1.0.2...v1.1.0) (2026-06-09)
+
+### Fixes
+
+* actualize docs ([0e40e64](https://github.com/SkeLLLa/pi-ws/commit/0e40e6416b1be687287ca8377ac9427d339cd925))
+* better prompt and harden security a bit ([5151a64](https://github.com/SkeLLLa/pi-ws/commit/5151a64e2695934076e32290a14ad43bbf220948))
+* docs ([b7a7750](https://github.com/SkeLLLa/pi-ws/commit/b7a7750a44a4159d90204971480e1c649e0c7270))
+* docs and release tag ([604224f](https://github.com/SkeLLLa/pi-ws/commit/604224f50369eb7522ebdc81b75959c188d2ea42))
 * republish ([20cfc99](https://github.com/SkeLLLa/pi-ws/commit/20cfc998ed25a60d6f5e9552b16363d767161e8c))
 
 ### Other
