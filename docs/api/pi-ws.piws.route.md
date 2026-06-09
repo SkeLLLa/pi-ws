@@ -9,7 +9,10 @@ Registers a WebSocket route on the underlying `uWebSockets.js` app.
 **Signature:**
 
 ```typescript
-route<UserData = unknown>(path: string, behavior: WebSocketRoute<UserData>['behavior']): this;
+route<UserData = unknown>(input: {
+        path: string;
+        behavior: WebSocketRoute<UserData>['behavior'];
+    }): this;
 ```
 
 ## Parameters
@@ -29,28 +32,24 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-path
+{ path, behavior, }
 
 </td><td>
 
-string
+(not declared)
 
 </td><td>
-
-WebSocket route path.
 
 </td></tr>
 <tr><td>
 
-behavior
+input
 
 </td><td>
 
-[WebSocketRoute](./pi-ws.websocketroute.md)<!-- -->&lt;UserData&gt;\['behavior'\]
+{ path: string; behavior: [WebSocketRoute](./pi-ws.websocketroute.md)<!-- -->&lt;UserData&gt;\['behavior'\]; }
 
 </td><td>
-
-Route behavior passed to `app.ws()`<!-- -->.
 
 </td></tr>
 </tbody></table>

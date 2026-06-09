@@ -9,7 +9,7 @@ Library-first wrapper around `uWebSockets.js` that exposes a built-in Pi RPC rou
 **Signature:**
 
 ```typescript
-export declare class PiWs
+export declare class PiWs<Session = unknown>
 ```
 
 ## Remarks
@@ -61,24 +61,22 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-[authorize(authorizer)](./pi-ws.piws.authorize.md)
+[addHook(name, hook)](./pi-ws.piws.addhook.md)
 
 </td><td>
 
 </td><td>
 
-Protects the built-in Pi WebSocket route with a synchronous authorizer.
+Registers a built-in Pi route hook.
 
 </td></tr>
 <tr><td>
 
-[clearAuthorization()](./pi-ws.piws.clearauthorization.md)
+[addHook(name, hook)](./pi-ws.piws.addhook_1.md)
 
 </td><td>
 
 </td><td>
-
-Removes authorization from the built-in Pi WebSocket route.
 
 </td></tr>
 <tr><td>
@@ -160,7 +158,7 @@ Returns the current resolved server configuration.
 </td></tr>
 <tr><td>
 
-[handle(method, path, handler)](./pi-ws.piws.handle.md)
+[handle({ method, path, handler, }, input)](./pi-ws.piws.handle.md)
 
 </td><td>
 
@@ -182,7 +180,7 @@ Starts listening and returns a handle for the running server.
 </td></tr>
 <tr><td>
 
-[route(path, behavior)](./pi-ws.piws.route.md)
+[route({ path, behavior, }, input)](./pi-ws.piws.route.md)
 
 </td><td>
 

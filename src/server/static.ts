@@ -15,38 +15,56 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.svg': 'image/svg+xml',
 };
 
-export function installChatExampleRoutes(app: TemplatedApp): void {
-  app.get('/', (res) => {
-    redirect(res, '/examples/chat/');
-  });
+export class ChatExampleRoutes {
+  readonly #root: string;
 
-  app.get('/examples/chat', (res) => {
-    redirect(res, '/examples/chat/');
-  });
+  constructor({ root = CHAT_EXAMPLE_DIR }: { root?: string } = {}) {
+    this.#root = root;
+  }
 
-  app.get('/examples/chat/', (res) => {
-    serveFile(res, CHAT_EXAMPLE_DIR, 'index.html');
-  });
+  install({ app }: { app: TemplatedApp }): void {
+    app.get('/', (res) => {
+      redirect({ res, location: '/examples/chat/' });
+    });
 
-  app.get('/examples/chat/*', (res, req) => {
-    const path = req.getUrl().slice('/examples/chat/'.length);
-    serveFile(res, CHAT_EXAMPLE_DIR, path);
-  });
+    app.get('/examples/chat', (res) => {
+      redirect({ res, location: '/examples/chat/' });
+    });
+
+    app.get('/examples/chat/', (res) => {
+      serveFile({ res, root: this.#root, requestedPath: 'index.html' });
+    });
+
+    app.get('/examples/chat/*', (res, req) => {
+      const path = req.getUrl().slice('/examples/chat/'.length);
+      serveFile({ res, root: this.#root, requestedPath: path });
+    });
+  }
 }
 
-function redirect(res: HttpResponse, location: string): void {
+function redirect({
+  res,
+  location,
+}: {
+  res: HttpResponse;
+  location: string;
+}): void {
   res
     .writeStatus('302 Found')
     .writeHeader('location', location)
     .end('Redirecting');
 }
 
-function serveFile(
-  res: HttpResponse,
-  root: string,
-  requestedPath: string,
-): void {
-  const filePath = resolveSafePath(root, requestedPath);
+function serveFile({
+  res,
+  root,
+  requestedPath,
+}: {
+  res: HttpResponse;
+  root: string;
+  requestedPath: string;
+}): void {
+  const filePath = resolveSafePath({ root, requestedPath });
   if (
     filePath === undefined ||
     !existsSync(filePath) ||
@@ -64,10 +82,13 @@ function serveFile(
     .end(readFileSync(filePath));
 }
 
-function resolveSafePath(
-  root: string,
-  requestedPath: string,
-): string | undefined {
+function resolveSafePath({
+  root,
+  requestedPath,
+}: {
+  root: string;
+  requestedPath: string;
+}): string | undefined {
   const filePath = normalize(join(root, requestedPath));
   const rootRelative = relative(root, filePath);
 

@@ -9,7 +9,7 @@ Partial server configuration accepted from callers and config files.
 **Signature:**
 
 ```typescript
-export interface PiWsOptions
+export interface PiWsOptions<Session = unknown>
 ```
 
 ## Remarks
@@ -105,7 +105,7 @@ _(Optional)_ Pi subprocess launch settings.
 </td></tr>
 <tr><td>
 
-[piAuth?](./pi-ws.piwsoptions.piauth.md)
+[piHooks?](./pi-ws.piwsoptions.pihooks.md)
 
 </td><td>
 
@@ -113,11 +113,11 @@ _(Optional)_ Pi subprocess launch settings.
 
 </td><td>
 
-[RequestAuthorizer](./pi-ws.requestauthorizer.md)
+[PiWsHooks](./pi-ws.piwshooks.md)<!-- -->&lt;Session&gt;
 
 </td><td>
 
-_(Optional)_ Optional authorizer for the built-in Pi WebSocket route.
+_(Optional)_ Optional hooks for the built-in Pi WebSocket route.
 
 </td></tr>
 <tr><td>

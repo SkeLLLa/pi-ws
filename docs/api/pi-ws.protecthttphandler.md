@@ -9,10 +9,10 @@ Wraps an HTTP handler with synchronous request authorization.
 **Signature:**
 
 ```typescript
-export declare function protectHttpHandler(
-  handler: HttpHandler,
-  authorize: RequestAuthorizer,
-): HttpHandler;
+export declare function protectHttpHandler(input: {
+  handler: HttpHandler;
+  authorize: RequestAuthorizer;
+}): HttpHandler;
 ```
 
 ## Parameters
@@ -32,28 +32,24 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-handler
+{ handler, authorize, }
 
 </td><td>
 
-[HttpHandler](./pi-ws.httphandler.md)
+(not declared)
 
 </td><td>
-
-Original route handler.
 
 </td></tr>
 <tr><td>
 
-authorize
+input
 
 </td><td>
 
-[RequestAuthorizer](./pi-ws.requestauthorizer.md)
+{ handler: [HttpHandler](./pi-ws.httphandler.md)<!-- -->; authorize: [RequestAuthorizer](./pi-ws.requestauthorizer.md)<!-- -->; }
 
 </td><td>
-
-Authorizer to run before the handler.
 
 </td></tr>
 </tbody></table>

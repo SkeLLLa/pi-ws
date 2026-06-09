@@ -10,7 +10,7 @@ Typed helper for authoring `pi-ws` config files.
 
 ```typescript
 definePiWsConfig: import('c12').DefineConfig<
-  PiWsOptions,
+  PiWsOptions<unknown>,
   import('c12').ConfigLayerMeta
 >;
 ```

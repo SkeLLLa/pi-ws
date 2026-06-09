@@ -8,16 +8,18 @@ import {
 } from 'uWebSockets.js';
 import { createPiWebSocketRoute } from '../ws/pi-route.js';
 import { createDefaultConfig } from './config.js';
-import { installChatExampleRoutes } from './static.js';
+import { ChatExampleRoutes } from './static.js';
 import type {
+  AuthHook,
   HttpHandler,
   HttpMethod,
   HttpRoute,
   PiProcessOptions,
   PiWsConfig,
+  PiWsHookName,
   PiWsListenOptions,
   PiWsOptions,
-  RequestAuthorizer,
+  RequestHook,
   RouteInstaller,
   RunningServer,
   WebSocketRoute,
@@ -38,8 +40,8 @@ const createSecureApp = SSLApp;
  *
  * @public
  */
-export class PiWs {
-  #config: PiWsConfig;
+export class PiWs<Session = unknown> {
+  #config: PiWsConfig<Session>;
   readonly #httpRoutes: HttpRoute[] = [];
   readonly #wsRoutes: WebSocketRoute[] = [];
   readonly #installers: RouteInstaller[] = [];
@@ -56,8 +58,11 @@ export class PiWs {
    *
    * @param config - Optional partial configuration merged over library defaults.
    */
-  constructor(config: PiWsOptions = {}) {
-    this.#config = mergeConfig(createDefaultConfig(process.env), config);
+  constructor(config: PiWsOptions<Session> = {}) {
+    this.#config = mergeConfig<Session>({
+      base: createDefaultConfig(process.env) as PiWsConfig<Session>,
+      override: config,
+    });
   }
 
   /**
@@ -70,7 +75,7 @@ export class PiWs {
    *
    * @returns Current server configuration snapshot.
    */
-  getConfig(): Readonly<PiWsConfig> {
+  getConfig(): Readonly<PiWsConfig<Session>> {
     return this.#config;
   }
 
@@ -85,8 +90,11 @@ export class PiWs {
    * @param config - Partial configuration to merge.
    * @returns The current `PiWs` instance.
    */
-  configure(config: PiWsOptions): this {
-    this.#config = mergeConfig(this.#config, config);
+  configure(config: PiWsOptions<Session>): this {
+    this.#config = mergeConfig<Session>({
+      base: this.#config,
+      override: config,
+    });
     return this;
   }
 
@@ -118,7 +126,10 @@ export class PiWs {
       throw new Error('TLS config is required');
     }
 
-    this.#config = mergeConfig(this.#config, { tls: config });
+    this.#config = mergeConfig<Session>({
+      base: this.#config,
+      override: { tls: config },
+    });
     return this;
   }
 
@@ -128,7 +139,7 @@ export class PiWs {
    * @returns The current `PiWs` instance.
    */
   disableTls(): this {
-    this.#config = clearTlsConfig(this.#config);
+    this.#config = clearTlsConfig<Session>(this.#config);
     return this;
   }
 
@@ -139,7 +150,10 @@ export class PiWs {
    * @returns The current `PiWs` instance.
    */
   setChatExample(enabled: boolean): this {
-    this.#config = mergeConfig(this.#config, { chatExample: enabled });
+    this.#config = mergeConfig<Session>({
+      base: this.#config,
+      override: { chatExample: enabled },
+    });
     return this;
   }
 
@@ -155,7 +169,15 @@ export class PiWs {
    * @param handler - Route callback.
    * @returns The current `PiWs` instance.
    */
-  handle(method: HttpMethod, path: string, handler: HttpHandler): this {
+  handle({
+    method,
+    path,
+    handler,
+  }: {
+    method: HttpMethod;
+    path: string;
+    handler: HttpHandler;
+  }): this {
     this.#httpRoutes.push({ method, path, handler });
     return this;
   }
@@ -172,10 +194,13 @@ export class PiWs {
    * @param behavior - Route behavior passed to `app.ws()`.
    * @returns The current `PiWs` instance.
    */
-  route<UserData = unknown>(
-    path: string,
-    behavior: WebSocketRoute<UserData>['behavior'],
-  ): this {
+  route<UserData = unknown>({
+    path,
+    behavior,
+  }: {
+    path: string;
+    behavior: WebSocketRoute<UserData>['behavior'];
+  }): this {
     this.#wsRoutes.push({
       path,
       behavior: behavior as WebSocketRoute['behavior'],
@@ -201,31 +226,46 @@ export class PiWs {
   }
 
   /**
-   * Protects the built-in Pi WebSocket route with a synchronous authorizer.
+   * Registers a built-in Pi route hook.
    *
    * @remarks
-   * This is a convenience wrapper for the default `${wsPrefix}/pi` bridge
-   * route. Use `protectHttpHandler()` or `protectWebSocketBehavior()` for your
-   * own custom routes.
+   * This mirrors the Fastify-style `addHook(name, fn)` shape for built-in Pi
+   * route lifecycles.
    *
-   * @param authorizer - Synchronous request authorizer.
+   * @param name - Hook lifecycle name.
+   * @param hook - Hook callback.
    * @returns The current `PiWs` instance.
    */
-  authorize(authorizer: RequestAuthorizer): this {
+  addHook(name: 'onRequest', hook: RequestHook<Session>): this;
+  addHook(name: 'onAuth', hook: AuthHook<Session>): this;
+  addHook(
+    name: PiWsHookName,
+    hook: RequestHook<Session> | AuthHook<Session>,
+  ): this {
+    if (name === 'onRequest') {
+      this.#config = {
+        ...this.#config,
+        piHooks: {
+          ...this.#config.piHooks,
+          onRequest: [
+            ...(this.#config.piHooks?.onRequest ?? []),
+            hook as RequestHook<Session>,
+          ],
+        },
+      };
+      return this;
+    }
+
     this.#config = {
       ...this.#config,
-      piAuth: authorizer,
+      piHooks: {
+        ...this.#config.piHooks,
+        onAuth: [
+          ...(this.#config.piHooks?.onAuth ?? []),
+          hook as AuthHook<Session>,
+        ],
+      },
     };
-    return this;
-  }
-
-  /**
-   * Removes authorization from the built-in Pi WebSocket route.
-   *
-   * @returns The current `PiWs` instance.
-   */
-  clearAuthorization(): this {
-    this.#config = clearPiAuthConfig(this.#config);
     return this;
   }
 
@@ -242,10 +282,13 @@ export class PiWs {
   async listen(options: PiWsListenOptions = {}): Promise<RunningServer> {
     if (this.#server !== undefined) return this.#server;
 
-    const config = mergeConfig(this.#config, options);
     const app = this.createApp();
+    const config = {
+      host: options.host ?? this.#config.host,
+      port: options.port ?? this.#config.port,
+    };
 
-    this.#server = await listen(app, config.host, config.port);
+    this.#server = await listen({ app, host: config.host, port: config.port });
     return this.#server;
   }
 
@@ -274,17 +317,17 @@ export class PiWs {
 
     installHealthRoute(app);
     if (this.#config.chatExample) {
-      installChatExampleRoutes(app);
+      new ChatExampleRoutes().install({ app });
     }
 
     app.ws(
       `${this.#config.wsPrefix}/pi`,
-      createPiWebSocketRoute({
+      createPiWebSocketRoute<Session>({
         pi: this.#config.pi,
         maxPayloadBytes: this.#config.maxPayloadBytes,
-        ...(this.#config.piAuth === undefined
+        ...(this.#config.piHooks === undefined
           ? {}
-          : { authorize: this.#config.piAuth }),
+          : { hooks: this.#config.piHooks }),
       }),
     );
 
@@ -317,11 +360,14 @@ export class PiWs {
  * @returns Running server handle.
  * @public
  */
-export async function createPiWsServer(
-  config: PiWsOptions,
-  installers: readonly RouteInstaller[] = [],
-): Promise<RunningServer> {
-  const pipe = new PiWs(config);
+export async function createPiWsServer<Session = unknown>({
+  config,
+  installers = [],
+}: {
+  config: PiWsOptions<Session>;
+  installers?: readonly RouteInstaller[];
+}): Promise<RunningServer> {
+  const pipe = new PiWs<Session>(config);
 
   for (const installer of installers) {
     pipe.use(installer);
@@ -330,8 +376,14 @@ export async function createPiWsServer(
   return pipe.listen();
 }
 
-function mergeConfig(base: PiWsConfig, override: PiWsOptions): PiWsConfig {
-  const tls = mergeTlsConfig(base.tls, override.tls);
+function mergeConfig<Session>({
+  base,
+  override,
+}: {
+  base: PiWsConfig<Session>;
+  override: PiWsOptions<Session>;
+}): PiWsConfig<Session> {
+  const tls = mergeTlsConfig({ base: base.tls, override: override.tls });
 
   return {
     ...base,
@@ -344,22 +396,21 @@ function mergeConfig(base: PiWsConfig, override: PiWsOptions): PiWsConfig {
   };
 }
 
-function clearTlsConfig(config: PiWsConfig): PiWsConfig {
+function clearTlsConfig<Session>(
+  config: PiWsConfig<Session>,
+): PiWsConfig<Session> {
   const { tls: _tls, ...rest } = config;
   void _tls;
   return rest;
 }
 
-function clearPiAuthConfig(config: PiWsConfig): PiWsConfig {
-  const { piAuth: _piAuth, ...rest } = config;
-  void _piAuth;
-  return rest;
-}
-
-function mergeTlsConfig(
-  base: PiWsConfig['tls'],
-  override: PiWsConfig['tls'],
-): PiWsConfig['tls'] {
+function mergeTlsConfig({
+  base,
+  override,
+}: {
+  base: PiWsConfig['tls'];
+  override: PiWsConfig['tls'];
+}): PiWsConfig['tls'] {
   if (override === undefined) return base;
   if (base === undefined) return override;
 
@@ -396,7 +447,7 @@ function mergeTlsConfig(
   };
 }
 
-function createUwsApp(config: PiWsConfig): TemplatedApp {
+function createUwsApp<Session>(config: PiWsConfig<Session>): TemplatedApp {
   if (config.tls === undefined) {
     return createPlainApp();
   }
@@ -449,11 +500,15 @@ function installNotFoundRoute(app: TemplatedApp): void {
   });
 }
 
-function listen(
-  app: TemplatedApp,
-  host: string,
-  port: number,
-): Promise<RunningServer> {
+function listen({
+  app,
+  host,
+  port,
+}: {
+  app: TemplatedApp;
+  host: string;
+  port: number;
+}): Promise<RunningServer> {
   return new Promise((resolve, reject) => {
     app.listen(host, port, (socket) => {
       if (socket === false) {
@@ -461,16 +516,20 @@ function listen(
         return;
       }
 
-      resolve(createRunningServer(app, socket, port));
+      resolve(createRunningServer({ app, socket, port }));
     });
   });
 }
 
-function createRunningServer(
-  app: TemplatedApp,
-  socket: us_listen_socket,
-  port: number,
-): RunningServer {
+function createRunningServer({
+  app,
+  socket,
+  port,
+}: {
+  app: TemplatedApp;
+  socket: us_listen_socket;
+  port: number;
+}): RunningServer {
   let closed = false;
 
   return {

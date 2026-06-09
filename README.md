@@ -61,7 +61,12 @@ pnpm build:docs
 TLS, route protection, and Pi customization on top:
 
 ```ts
-import { createStaticTokenAuthorizer, PiWs, protectHttpHandler } from 'pi-ws';
+import {
+  createStaticTokenAuthHook,
+  PiWs,
+  protectHttpHandler,
+  StaticTokenAuthorizer,
+} from 'pi-ws';
 
 const pipe = new PiWs()
   .configure({
@@ -81,26 +86,41 @@ const pipe = new PiWs()
     promptTemplates: ['./.pi/prompts/review.md'],
   });
 
-const tokenAuth = createStaticTokenAuthorizer({
+const tokenHook = createStaticTokenAuthHook({
   token: process.env.PI_WS_AUTH_TOKEN ?? 'dev-secret',
   queryParam: 'token',
+  createSession: async (request) => ({
+    authenticated: true,
+    clientId: request.headers['x-client-id'] ?? 'browser',
+  }),
 });
 
-pipe.authorize(tokenAuth);
+pipe.addHook('onAuth', tokenHook);
 
-pipe.handle(
-  'get',
-  '/api/version',
-  protectHttpHandler((res) => {
-    res
-      .writeHeader('content-type', 'application/json')
-      .end(JSON.stringify({ version: 'local-dev' }));
-  }, tokenAuth),
-);
+const tokenAuthorizer = new StaticTokenAuthorizer({
+  token: process.env.PI_WS_AUTH_TOKEN ?? 'dev-secret',
+  queryParam: 'token',
+}).authorize;
 
-pipe.route('/ws/echo', {
-  message(ws, message, isBinary) {
-    ws.send(message, isBinary);
+pipe.handle({
+  method: 'get',
+  path: '/api/version',
+  handler: protectHttpHandler({
+    handler: (res) => {
+      res
+        .writeHeader('content-type', 'application/json')
+        .end(JSON.stringify({ version: 'local-dev' }));
+    },
+    authorize: tokenAuthorizer,
+  }),
+});
+
+pipe.route({
+  path: '/ws/echo',
+  behavior: {
+    message(ws, message, isBinary) {
+      ws.send(message, isBinary);
+    },
   },
 });
 
@@ -109,9 +129,17 @@ await pipe.listen();
 
 The built-in Pi RPC route remains available at `/ws/pi`. Use `handle()` for
 HTTP routes, `route()` for WebSocket routes, and `use()` for direct
-`uWebSockets.js` access when needed. Use `authorize()` to protect the built-in
-Pi route, and `protectHttpHandler()` / `protectWebSocketBehavior()` to reuse
-the same auth logic on your own routes.
+`uWebSockets.js` access when needed. Use `addHook('onRequest', ...)` for
+pre-upgrade request checks, `addHook('onAuth', ...)` for authentication, and
+`protectHttpHandler()` /
+`protectWebSocketBehavior()` to reuse the same auth logic on your own routes.
+
+Browser clients that cannot send WebSocket upgrade headers can authenticate as
+their first message:
+
+```json
+{ "token": "dev-secret", "type": "pi_ws_auth" }
+```
 
 For the full exported API surface, see [docs/api/pi-ws.md](docs/api/pi-ws.md).
 
@@ -154,10 +182,14 @@ const pipe = new PiWs().configure({
   port: 8787,
 });
 
-pipe.handle('get', '/api/hello', (res) => {
-  res
-    .writeHeader('content-type', 'application/json')
-    .end(JSON.stringify({ hello: 'pi-ws' }));
+pipe.handle({
+  method: 'get',
+  path: '/api/hello',
+  handler: (res) => {
+    res
+      .writeHeader('content-type', 'application/json')
+      .end(JSON.stringify({ hello: 'pi-ws' }));
+  },
 });
 
 await pipe.listen();
@@ -333,39 +365,67 @@ The extension surface stays small on purpose:
 
 - `tls` switches the server from `App()` to `SSLApp()` and keeps the rest of
   the API unchanged.
-- `authorize()` protects the built-in Pi bridge route.
-- `createStaticTokenAuthorizer()` gives you a ready-made shared-secret auth
-  policy for headers and browser-friendly query tokens.
+- `addHook('onRequest', hook)` runs async-capable pre-upgrade checks for the
+  built-in Pi bridge route.
+- `addHook('onAuth', hook)` authenticates the built-in Pi bridge route from
+  upgrade metadata or from the reserved first websocket message.
+- `createStaticTokenAuthHook()` gives you a ready-made shared-secret auth hook
+  and a concrete example for writing your own hook-based auth.
+- `StaticTokenAuthorizer` remains available when you want the same token policy
+  for synchronous HTTP helpers such as `protectHttpHandler()`.
 - `protectHttpHandler()` and `protectWebSocketBehavior()` let you reuse the
-  same auth logic on your own routes.
+  same auth logic on your own routes. WebSocket hooks can later read their
+  stored session/context via `getWebSocketContext()` or `getWebSocketSession()`.
 - `pi.agentDir`, `pi.systemPrompt`, `pi.appendSystemPrompt`,
   `pi.extensions`, and `pi.promptTemplates` map directly to Pi’s documented
   customization mechanisms instead of inventing a parallel plugin system.
+
+Planned hook lifecycle additions:
+
+- `onConnect` after the socket is upgraded and context is available.
+- `onMessage` before a client payload is forwarded to Pi.
+- `onPiEvent` before a Pi event is sent to the websocket client.
+- `onClose` after socket shutdown for cleanup and audit.
+- `onError` for protocol and Pi process errors.
 
 Example: protect the built-in Pi route and one custom HTTP route with the same
 token policy:
 
 ```ts
-import { createStaticTokenAuthorizer, PiWs, protectHttpHandler } from 'pi-ws';
+import {
+  createStaticTokenAuthHook,
+  PiWs,
+  protectHttpHandler,
+  StaticTokenAuthorizer,
+} from 'pi-ws';
 
-const authorize = createStaticTokenAuthorizer({
+const tokenHook = createStaticTokenAuthHook({
   token: 'change-me',
   queryParam: 'token',
+  createSession: async () => ({ role: 'user' }),
 });
 
 const pipe = new PiWs({
   chatExample: false,
 });
 
-pipe.authorize(authorize);
+pipe.addHook('onAuth', tokenHook);
 
-pipe.handle(
-  'get',
-  '/api/private',
-  protectHttpHandler((res) => {
-    res.end('ok');
-  }, authorize),
-);
+const authorize = new StaticTokenAuthorizer({
+  token: 'change-me',
+  queryParam: 'token',
+}).authorize;
+
+pipe.handle({
+  method: 'get',
+  path: '/api/private',
+  handler: protectHttpHandler({
+    handler: (res) => {
+      res.end('ok');
+    },
+    authorize,
+  }),
+});
 
 await pipe.listen();
 ```
@@ -419,15 +479,22 @@ import { PiWs } from 'pi-ws';
 
 const pipe = new PiWs();
 
-pipe.handle('get', '/api/version', (res) => {
-  res
-    .writeHeader('content-type', 'application/json')
-    .end(JSON.stringify({ version: '1.0.0' }));
+pipe.handle({
+  method: 'get',
+  path: '/api/version',
+  handler: (res) => {
+    res
+      .writeHeader('content-type', 'application/json')
+      .end(JSON.stringify({ version: '1.0.0' }));
+  },
 });
 
-pipe.route('/ws/echo', {
-  message(ws, message, isBinary) {
-    ws.send(message, isBinary);
+pipe.route({
+  path: '/ws/echo',
+  behavior: {
+    message(ws, message, isBinary) {
+      ws.send(message, isBinary);
+    },
   },
 });
 

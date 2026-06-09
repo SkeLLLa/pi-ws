@@ -2,7 +2,9 @@ const messages = document.querySelector('#messages');
 const events = document.querySelector('#events');
 const status = document.querySelector('#status');
 const wsUrl = document.querySelector('#ws-url');
+const authTokenInput = document.querySelector('#auth-token');
 const connectButton = document.querySelector('#connect');
+const authenticateButton = document.querySelector('#authenticate');
 const composer = document.querySelector('#composer');
 const promptInput = document.querySelector('#prompt');
 const sendButton = document.querySelector('#send');
@@ -11,9 +13,11 @@ const abortButton = document.querySelector('#abort');
 let socket;
 let requestNumber = 0;
 let activeAssistantMessage;
+let piReady = false;
+let authPending = false;
 
 wsUrl.value = defaultWebSocketUrl();
-setConnected(false);
+setConnectionState('disconnected');
 appendSystem('Open the connection, then send a prompt.');
 
 connectButton.addEventListener('click', () => {
@@ -23,6 +27,15 @@ connectButton.addEventListener('click', () => {
   }
 
   connect();
+});
+
+authenticateButton.addEventListener('click', () => {
+  if (!authPending) {
+    appendSystem('Authentication is not waiting for a token.');
+    return;
+  }
+
+  sendAuthMessage();
 });
 
 composer.addEventListener('submit', (event) => {
@@ -53,12 +66,13 @@ abortButton.addEventListener('click', () => {
 function connect() {
   socket?.close();
   socket = new WebSocket(wsUrl.value);
-  status.textContent = 'Connecting...';
+  piReady = false;
+  authPending = false;
+  setConnectionState('connecting');
 
   socket.addEventListener('open', () => {
-    setConnected(true);
+    setConnectionState('connected');
     appendSystem('Connected.');
-    sendCommand({ id: nextRequestId(), type: 'get_state' });
   });
 
   socket.addEventListener('message', (event) => {
@@ -68,7 +82,9 @@ function connect() {
   });
 
   socket.addEventListener('close', (event) => {
-    setConnected(false);
+    piReady = false;
+    authPending = false;
+    setConnectionState('disconnected');
     appendSystem(`Disconnected (${event.code || 'no code'}).`);
   });
 
@@ -83,6 +99,11 @@ function sendCommand(command) {
     return;
   }
 
+  if (!piReady) {
+    appendSystem('Pi is not ready yet.');
+    return;
+  }
+
   socket.send(JSON.stringify(command));
 }
 
@@ -90,8 +111,25 @@ function handlePiEvent(event) {
   if (!event || typeof event !== 'object') return;
 
   switch (event.type) {
+    case 'pi_ws_auth_required':
+      authPending = true;
+      setConnectionState('auth-required');
+      appendSystem('Server requested WebSocket auth.');
+      if (authTokenInput.value.trim() !== '') {
+        sendAuthMessage();
+      }
+      break;
+    case 'pi_ws_auth_failed':
+      authPending = false;
+      appendSystem(
+        `Authentication failed: ${event.status ?? '401 Unauthorized'}`,
+      );
+      break;
     case 'pi_ws_ready':
-      status.textContent = 'Connected. Pi RPC process is ready.';
+      piReady = true;
+      authPending = false;
+      setConnectionState('ready');
+      sendCommand({ id: nextRequestId(), type: 'get_state' });
       break;
     case 'pi_ws_error':
       appendSystem(`Bridge error: ${event.message}`);
@@ -140,6 +178,8 @@ function handleMessageUpdate(event) {
 }
 
 function handleMessageEnd(event) {
+  if (event.message?.role !== 'assistant') return;
+
   const text = extractMessageText(event.message);
   if (text === '') return;
 
@@ -195,11 +235,54 @@ function parseEvent(data) {
   }
 }
 
-function setConnected(connected) {
-  connectButton.textContent = connected ? 'Disconnect' : 'Connect';
-  sendButton.disabled = !connected;
-  abortButton.disabled = !connected;
-  status.textContent = connected ? 'Connected' : 'Disconnected';
+function setConnectionState(state) {
+  connectButton.textContent =
+    state === 'disconnected' || state === 'connecting'
+      ? 'Connect'
+      : 'Disconnect';
+  sendButton.disabled = !piReady;
+  abortButton.disabled = !piReady;
+  authenticateButton.disabled = !authPending;
+
+  switch (state) {
+    case 'connecting':
+      status.textContent = 'Connecting...';
+      break;
+    case 'connected':
+      status.textContent = 'Connected. Waiting for Pi route readiness.';
+      break;
+    case 'auth-required':
+      status.textContent = 'Connected. Waiting for authentication.';
+      break;
+    case 'ready':
+      status.textContent = 'Connected. Pi RPC process is ready.';
+      break;
+    default:
+      status.textContent = 'Disconnected';
+      break;
+  }
+}
+
+function sendAuthMessage() {
+  if (socket?.readyState !== WebSocket.OPEN) {
+    appendSystem('Not connected.');
+    return;
+  }
+
+  const token = authTokenInput.value.trim();
+  if (token === '') {
+    appendSystem('Enter an auth token before authenticating.');
+    return;
+  }
+
+  authPending = true;
+  status.textContent = 'Connected. Authenticating...';
+  socket.send(
+    JSON.stringify({
+      type: 'pi_ws_auth',
+      token,
+    }),
+  );
 }
 
 function nextRequestId() {

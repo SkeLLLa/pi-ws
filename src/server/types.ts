@@ -98,6 +98,196 @@ export interface AuthorizationFailure {
 export type AuthorizationResult = AuthorizationSuccess | AuthorizationFailure;
 
 /**
+ * Value that may be returned synchronously or asynchronously.
+ *
+ * @public
+ */
+export type MaybePromise<T> = T | Promise<T>;
+
+/**
+ * Mutable context shared across request hooks during a single request or
+ * WebSocket upgrade.
+ *
+ * @typeParam Session - Optional session value attached by hooks.
+ * @public
+ */
+export interface RequestHookContext<Session = unknown> {
+  /**
+   * Optional authenticated session or principal resolved by hooks.
+   */
+  session?: Session;
+  /**
+   * Mutable bag for per-request state shared between hooks.
+   */
+  readonly locals: Record<string, unknown>;
+}
+
+/**
+ * Result returned by a request hook.
+ *
+ * @remarks
+ * Returning `undefined` or `{ authorized: true }` lets processing continue.
+ * Hooks may either attach session data by mutating `context.session` or by
+ * returning `{ session }`.
+ *
+ * @typeParam Session - Optional session value attached by hooks.
+ * @public
+ */
+export interface RequestHookSuccess<Session = unknown> {
+  /**
+   * Indicates the request should continue.
+   */
+  readonly authorized?: true;
+  /**
+   * Optional authenticated session or principal produced by the hook.
+   */
+  readonly session?: Session;
+}
+
+/**
+ * Result returned by a request hook.
+ *
+ * @remarks
+ * Returning an [AuthorizationFailure](./pi-ws.authorizationfailure.md) rejects
+ * the request immediately.
+ *
+ * @typeParam Session - Optional session value attached by hooks.
+ * @public
+ */
+export type RequestHookResult<Session = unknown> =
+  | AuthorizationFailure
+  | RequestHookSuccess<Session>
+  | undefined;
+
+/**
+ * Async-capable request hook used by the built-in Pi WebSocket route and
+ * `protectWebSocketBehavior()`.
+ *
+ * @remarks
+ * Hooks receive the structured request plus a mutable shared context. They can
+ * deny the request, attach a `session`, or populate `locals` for later access.
+ *
+ * @param request - Structured request data.
+ * @param context - Mutable per-request hook context.
+ * @returns Optional authorization decision.
+ * @public
+ */
+export type RequestHook<Session = unknown> = (
+  request: AuthorizationRequest,
+  context: RequestHookContext<Session>,
+) => MaybePromise<RequestHookResult<Session>>;
+
+/**
+ * Source that supplied credentials to an auth hook.
+ *
+ * @public
+ */
+export type AuthSource = 'request' | 'message';
+
+/**
+ * Structured authentication data passed to an auth hook.
+ *
+ * @remarks
+ * Browser clients usually cannot set arbitrary WebSocket upgrade headers, so
+ * `pi-ws` can run auth from a reserved first websocket message as well as from
+ * upgrade request metadata.
+ *
+ * @public
+ */
+export interface AuthHookInput {
+  /**
+   * Whether this auth attempt came from the upgrade request or a websocket
+   * message.
+   */
+  readonly source: AuthSource;
+  /**
+   * Original HTTP upgrade request snapshot.
+   */
+  readonly request: AuthorizationRequest;
+  /**
+   * Indicates whether any supported credential material was present.
+   */
+  readonly provided: boolean;
+  /**
+   * Token extracted from a header, query parameter, or first-message envelope.
+   */
+  readonly token?: string;
+  /**
+   * Parsed first-message auth envelope when `source` is `"message"`.
+   */
+  readonly message?: Readonly<Record<string, unknown>>;
+  /**
+   * Optional custom payload supplied in the first-message auth envelope.
+   */
+  readonly payload?: unknown;
+}
+
+/**
+ * Async-capable auth hook used by the built-in Pi WebSocket route.
+ *
+ * @typeParam Session - Optional session value attached by hooks.
+ * @public
+ */
+export type AuthHook<Session = unknown> = (
+  auth: AuthHookInput,
+  context: RequestHookContext<Session>,
+) => MaybePromise<RequestHookResult<Session>>;
+
+/**
+ * Read-only context associated with an upgraded WebSocket connection.
+ *
+ * @typeParam Session - Optional session value attached by hooks.
+ * @public
+ */
+export interface WebSocketConnectionContext<Session = unknown> {
+  /**
+   * Original HTTP upgrade request snapshot.
+   */
+  readonly request: AuthorizationRequest;
+  /**
+   * Immutable copy of hook-local state collected during upgrade.
+   */
+  readonly locals: Readonly<Record<string, unknown>>;
+  /**
+   * Whether auth credentials were supplied during upgrade or first-message
+   * auth.
+   */
+  readonly authProvided: boolean;
+  /**
+   * Whether configured auth hooks accepted the connection.
+   */
+  readonly authenticated: boolean;
+  /**
+   * Optional authenticated session or principal resolved during upgrade.
+   */
+  readonly session?: Session;
+}
+
+/**
+ * Supported built-in Pi route hook names.
+ *
+ * @public
+ */
+export type PiWsHookName = 'onRequest' | 'onAuth';
+
+/**
+ * Hook collections for the built-in Pi WebSocket route.
+ *
+ * @public
+ */
+export interface PiWsHooks<Session = unknown> {
+  /**
+   * Runs before the built-in Pi route upgrades the WebSocket connection.
+   */
+  readonly onRequest?: readonly RequestHook<Session>[];
+  /**
+   * Runs when auth credentials are available from the upgrade request or from
+   * the reserved first websocket message.
+   */
+  readonly onAuth?: readonly AuthHook<Session>[];
+}
+
+/**
  * Synchronous request authorizer used by `pi-ws` guards.
  *
  * @remarks
@@ -309,7 +499,7 @@ export interface PiProcessOptions {
  *
  * @public
  */
-export interface PiWsConfig {
+export interface PiWsConfig<Session = unknown> {
   /**
    * Host or IP address to bind the HTTP/WebSocket server to.
    *
@@ -344,14 +534,14 @@ export interface PiWsConfig {
    */
   readonly pi: PiProcessConfig;
   /**
-   * Optional authorizer for the built-in Pi WebSocket route at
+   * Optional hooks for the built-in Pi WebSocket route at
    * `${wsPrefix}/pi`.
    *
    * @remarks
    * This protects the default Pi bridge route only. Use `protectHttpHandler()`
    * or `protectWebSocketBehavior()` for your own custom routes.
    */
-  readonly piAuth?: RequestAuthorizer;
+  readonly piHooks?: PiWsHooks<Session>;
   /**
    * Enables serving the built-in browser chat example routes.
    *
@@ -371,7 +561,7 @@ export interface PiWsConfig {
  *
  * @public
  */
-export interface PiWsOptions {
+export interface PiWsOptions<Session = unknown> {
   /**
    * Host or IP address to bind the HTTP/WebSocket server to.
    */
@@ -398,9 +588,9 @@ export interface PiWsOptions {
    */
   readonly pi?: PiProcessOptions;
   /**
-   * Optional authorizer for the built-in Pi WebSocket route.
+   * Optional hooks for the built-in Pi WebSocket route.
    */
-  readonly piAuth?: RequestAuthorizer;
+  readonly piHooks?: PiWsHooks<Session>;
   /**
    * Enables serving the built-in browser chat example routes.
    */

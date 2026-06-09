@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config as loadDotenv } from 'dotenv';
-import { PiWs } from '../dist/index.js';
+import { createStaticTokenAuthHook, PiWs } from '../dist/index.js';
 
 const providerApiKeyEnv = {
   anthropic: 'ANTHROPIC_API_KEY',
@@ -28,6 +28,8 @@ const port = Number(process.env.PI_WS_PORT ?? '8787');
 const provider = process.env.PI_PROVIDER ?? 'openai';
 const baseUrl = resolveBaseUrl(provider);
 const model = process.env.PI_MODEL;
+const authToken = process.env.PI_WS_AUTH_TOKEN;
+const authQueryParam = process.env.PI_WS_AUTH_QUERY_PARAM ?? 'token';
 const sessionDir =
   process.env.PI_CODING_AGENT_SESSION_DIR ??
   resolve(root, '.tmp/pi-ws-example/sessions');
@@ -65,6 +67,20 @@ const pipe = new PiWs({
   },
 });
 
+if (authToken !== undefined && authToken !== '') {
+  pipe.addHook(
+    'onAuth',
+    createStaticTokenAuthHook({
+      token: authToken,
+      queryParam: authQueryParam,
+      createSession: async (request) => ({
+        authenticatedAt: new Date().toISOString(),
+        clientAddress: request.remoteAddress ?? 'unknown',
+      }),
+    }),
+  );
+}
+
 const server = await pipe.listen();
 
 console.log(
@@ -73,6 +89,15 @@ console.log(
 console.log(`pi rpc websocket: ws://${host}:${String(server.port)}/ws/pi`);
 console.log(`provider: ${provider}`);
 console.log(`model: ${model ?? '(Pi default for provider)'}`);
+if (authToken !== undefined && authToken !== '') {
+  console.log(`auth: enabled with PI_WS_AUTH_TOKEN`);
+  console.log(
+    `browser auth: send {"type":"pi_ws_auth","token":"..." } as the first message`,
+  );
+  console.log(
+    `query auth: ws://${host}:${String(server.port)}/ws/pi?${authQueryParam}=...`,
+  );
+}
 if (baseUrl !== undefined && baseUrl !== '') {
   console.log(`base url: ${baseUrl}`);
   console.log(`pi config dir: ${process.env.PI_CODING_AGENT_DIR}`);

@@ -10,46 +10,60 @@ export interface PiRpcProcessHandlers {
   readonly onError: (error: Error) => void;
 }
 
-export interface PiRpcProcess {
-  send(message: Record<string, unknown>): void;
-  close(): void;
-}
+export class PiRpcProcess {
+  readonly #child: ChildProcessWithoutNullStreams;
+  #closed = false;
 
-export function startPiRpcProcess(
-  config: PiProcessConfig,
-  handlers: PiRpcProcessHandlers,
-): PiRpcProcess {
-  const resolved = resolvePiCommand(config);
-  const child = spawn(resolved.command, resolved.args, {
-    cwd: config.cwd,
-    env: resolvePiEnvironment(config),
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
+  constructor({
+    config,
+    handlers,
+  }: {
+    config: PiProcessConfig;
+    handlers: PiRpcProcessHandlers;
+  }) {
+    const resolved = resolvePiCommand(config);
+    this.#child = spawn(resolved.command, [...resolved.args], {
+      cwd: config.cwd,
+      env: resolvePiEnvironment(config),
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
 
-  const stdout = new JsonlSplitter();
+    const stdout = new JsonlSplitter();
 
-  child.stdout.on('data', (chunk: Buffer) => {
-    for (const line of stdout.push(chunk)) {
-      if (line === '') continue;
-
-      try {
-        handlers.onMessage(parseJsonObject(line));
-      } catch (error) {
-        handlers.onError(
-          new Error(`Invalid JSON from pi stdout: ${getErrorMessage(error)}`),
-        );
+    this.#child.stdout.on('data', (chunk: Buffer) => {
+      for (const line of stdout.push(chunk)) {
+        if (line === '') continue;
+        try {
+          handlers.onMessage(parseJsonObject(line));
+        } catch (error) {
+          handlers.onError(
+            new Error(`Invalid JSON from pi stdout: ${getErrorMessage(error)}`),
+          );
+        }
       }
+    });
+
+    this.#child.stderr.on('data', (chunk: Buffer) => {
+      handlers.onStderr(chunk.toString('utf8'));
+    });
+
+    this.#child.once('error', handlers.onError);
+    this.#child.once('exit', handlers.onExit);
+  }
+
+  send(message: Record<string, unknown>): void {
+    if (this.#closed || this.#child.stdin.destroyed) return;
+    this.#child.stdin.write(`${JSON.stringify(message)}\n`);
+  }
+
+  close(): void {
+    if (this.#closed) return;
+    this.#closed = true;
+    this.#child.stdin.end();
+    if (this.#child.exitCode === null && this.#child.signalCode === null) {
+      this.#child.kill('SIGTERM');
     }
-  });
-
-  child.stderr.on('data', (chunk: Buffer) => {
-    handlers.onStderr(chunk.toString('utf8'));
-  });
-
-  child.once('error', handlers.onError);
-  child.once('exit', handlers.onExit);
-
-  return createPiRpcProcess(child);
+  }
 }
 
 function resolvePiEnvironment(
@@ -58,33 +72,7 @@ function resolvePiEnvironment(
   if (config.agentDir === undefined || config.agentDir.trim() === '') {
     return config.env;
   }
-
-  return {
-    ...config.env,
-    PI_CODING_AGENT_DIR: config.agentDir,
-  };
-}
-
-function createPiRpcProcess(
-  child: ChildProcessWithoutNullStreams,
-): PiRpcProcess {
-  let closed = false;
-
-  return {
-    send(message) {
-      if (closed || child.stdin.destroyed) return;
-      child.stdin.write(`${JSON.stringify(message)}\n`);
-    },
-    close() {
-      if (closed) return;
-      closed = true;
-      child.stdin.end();
-
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill('SIGTERM');
-      }
-    },
-  };
+  return { ...config.env, PI_CODING_AGENT_DIR: config.agentDir };
 }
 
 function getErrorMessage(error: unknown): string {

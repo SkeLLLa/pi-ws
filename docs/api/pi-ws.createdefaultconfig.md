@@ -4,8 +4,6 @@
 
 ## createDefaultConfig() function
 
-Creates the built-in default runtime config without reading config files.
-
 **Signature:**
 
 ```typescript
@@ -39,7 +37,7 @@ NodeJS.ProcessEnv
 
 </td><td>
 
-_(Optional)_ Environment forwarded to the spawned Pi subprocess by default.
+_(Optional)_
 
 </td></tr>
 </tbody></table>
@@ -47,9 +45,3 @@ _(Optional)_ Environment forwarded to the spawned Pi subprocess by default.
 **Returns:**
 
 [PiWsConfig](./pi-ws.piwsconfig.md)
-
-Fully-resolved default runtime configuration.
-
-## Remarks
-
-This is mainly useful for embedding scenarios where you want the same runtime defaults as `PiWs` itself but intend to configure the server entirely in code.

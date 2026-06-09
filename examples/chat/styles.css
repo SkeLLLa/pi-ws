@@ -100,11 +100,16 @@ code {
 
 .connection-row {
   display: flex;
+  align-items: center;
   gap: 0.7rem;
 }
 
 .connection-row input {
   flex: 1;
+}
+
+.connection-row button {
+  flex: 0 0 auto;
 }
 
 input,

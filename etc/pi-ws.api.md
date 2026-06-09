@@ -9,8 +9,27 @@ import {
   type AppOptions,
   type HttpRequest,
   type HttpResponse,
+  type WebSocket as WebSocket_2,
   type WebSocketBehavior,
 } from 'uWebSockets.js';
+
+// Warning: (ae-forgotten-export) The symbol "MaybePromise" needs to be exported by the entry point index.d.ts
+//
+// @public
+export type AuthHook<Session = unknown> = (
+  auth: AuthHookInput,
+  context: RequestHookContext<Session>,
+) => MaybePromise<RequestHookResult<Session>>;
+
+// @public
+export interface AuthHookInput {
+  readonly message?: Readonly<Record<string, unknown>>;
+  readonly payload?: unknown;
+  readonly provided: boolean;
+  readonly request: AuthorizationRequest;
+  readonly source: AuthSource;
+  readonly token?: string;
+}
 
 // @public
 export interface AuthorizationFailure {
@@ -40,28 +59,47 @@ export interface AuthorizationSuccess {
 }
 
 // @public
+export type AuthSource = 'request' | 'message';
+
+// @public
 export function composeAuthorizers(
   ...authorizers: readonly RequestAuthorizer[]
 ): RequestAuthorizer;
 
 // @public
+export function composeHooks<Session = unknown>(
+  ...hooks: readonly RequestHook<Session>[]
+): RequestHook<Session>;
+
+// @public (undocumented)
 export function createDefaultConfig(env?: NodeJS.ProcessEnv): PiWsConfig;
 
 // @public
-export function createPiWsServer(
-  config: PiWsOptions,
-  installers?: readonly RouteInstaller[],
-): Promise<RunningServer>;
-
-// Warning: (ae-forgotten-export) The symbol "StaticTokenAuthorizerOptions" needs to be exported by the entry point index.d.ts
-//
-// @public
-export function createStaticTokenAuthorizer(
-  options: StaticTokenAuthorizerOptions,
-): RequestAuthorizer;
+export function createPiWsServer<Session = unknown>(input: {
+  config: PiWsOptions<Session>;
+  installers?: readonly RouteInstaller[];
+}): Promise<RunningServer>;
 
 // @public
-export const definePiWsConfig: DefineConfig<PiWsOptions, ConfigLayerMeta>;
+export function createStaticTokenAuthHook<Session = unknown>(
+  options: StaticTokenAuthHookOptions<Session>,
+): AuthHook<Session>;
+
+// @public
+export const definePiWsConfig: DefineConfig<
+  PiWsOptions<unknown>,
+  ConfigLayerMeta
+>;
+
+// @public
+export function getWebSocketContext<UserData, Session = unknown>(
+  ws: WebSocket_2<UserData>,
+): WebSocketConnectionContext<Session> | undefined;
+
+// @public
+export function getWebSocketSession<UserData, Session = unknown>(
+  ws: WebSocket_2<UserData>,
+): WebSocketConnectionContext<Session>['session'];
 
 // @public
 export type HttpHandler = (res: HttpResponse, req: HttpRequest) => void;
@@ -126,34 +164,39 @@ export interface PiProcessOptions {
 }
 
 // @public
-export class PiWs {
-  constructor(config?: PiWsOptions);
-  authorize(authorizer: RequestAuthorizer): this;
-  clearAuthorization(): this;
+export class PiWs<Session = unknown> {
+  constructor(config?: PiWsOptions<Session>);
+  addHook(name: 'onRequest', hook: RequestHook<Session>): this;
+  // (undocumented)
+  addHook(name: 'onAuth', hook: AuthHook<Session>): this;
   close(): void;
-  configure(config: PiWsOptions): this;
+  configure(config: PiWsOptions<Session>): this;
   configurePi(config: PiProcessOptions): this;
   configureTls(config: PiWsConfig['tls']): this;
   createApp(): TemplatedApp;
   disableTls(): this;
-  getConfig(): Readonly<PiWsConfig>;
-  handle(method: HttpMethod, path: string, handler: HttpHandler): this;
+  getConfig(): Readonly<PiWsConfig<Session>>;
+  handle(input: {
+    method: HttpMethod;
+    path: string;
+    handler: HttpHandler;
+  }): this;
   listen(options?: PiWsListenOptions): Promise<RunningServer>;
-  route<UserData = unknown>(
-    path: string,
-    behavior: WebSocketRoute<UserData>['behavior'],
-  ): this;
+  route<UserData = unknown>(input: {
+    path: string;
+    behavior: WebSocketRoute<UserData>['behavior'];
+  }): this;
   setChatExample(enabled: boolean): this;
   use(installer: RouteInstaller | ((app: TemplatedApp) => void)): this;
 }
 
 // @public
-export interface PiWsConfig {
+export interface PiWsConfig<Session = unknown> {
   readonly chatExample: boolean;
   readonly host: string;
   readonly maxPayloadBytes: number;
   readonly pi: PiProcessConfig;
-  readonly piAuth?: RequestAuthorizer;
+  readonly piHooks?: PiWsHooks<Session>;
   readonly port: number;
   readonly tls?: PiWsTlsConfig;
   readonly wsPrefix: string;
@@ -173,18 +216,27 @@ export interface PiWsConfigLoaderOptions {
 }
 
 // @public
+export type PiWsHookName = 'onRequest' | 'onAuth';
+
+// @public
+export interface PiWsHooks<Session = unknown> {
+  readonly onAuth?: readonly AuthHook<Session>[];
+  readonly onRequest?: readonly RequestHook<Session>[];
+}
+
+// @public
 export interface PiWsListenOptions {
   readonly host?: string;
   readonly port?: number;
 }
 
 // @public
-export interface PiWsOptions {
+export interface PiWsOptions<Session = unknown> {
   readonly chatExample?: boolean;
   readonly host?: string;
   readonly maxPayloadBytes?: number;
   readonly pi?: PiProcessOptions;
-  readonly piAuth?: RequestAuthorizer;
+  readonly piHooks?: PiWsHooks<Session>;
   readonly port?: number;
   readonly tls?: PiWsTlsConfig;
   readonly wsPrefix?: string;
@@ -202,22 +254,50 @@ export interface PiWsTlsConfig {
 }
 
 // @public
-export function protectHttpHandler(
-  handler: HttpHandler,
-  authorize: RequestAuthorizer,
-): HttpHandler;
+export function protectHttpHandler(input: {
+  handler: HttpHandler;
+  authorize: RequestAuthorizer;
+}): HttpHandler;
 
 // @public
-export function protectWebSocketBehavior<UserData>(
-  behavior: WebSocketBehavior<UserData>,
-  authorize: RequestAuthorizer,
-  createUserData?: (request: AuthorizationRequest) => UserData,
-): WebSocketBehavior<UserData>;
+export function protectWebSocketBehavior<UserData, Session = unknown>(input: {
+  behavior: Omit<WebSocketBehavior<UserData>, 'upgrade'>;
+  hooks?: readonly RequestHook<Session>[];
+  authHooks?: readonly AuthHook<Session>[];
+  createUserData?: (
+    request: AuthorizationRequest,
+    context: WebSocketConnectionContext<Session>,
+  ) => UserData;
+}): WebSocketBehavior<UserData>;
 
 // @public
 export type RequestAuthorizer = (
   request: AuthorizationRequest,
 ) => AuthorizationResult;
+
+// @public
+export type RequestHook<Session = unknown> = (
+  request: AuthorizationRequest,
+  context: RequestHookContext<Session>,
+) => MaybePromise<RequestHookResult<Session>>;
+
+// @public
+export interface RequestHookContext<Session = unknown> {
+  readonly locals: Record<string, unknown>;
+  session?: Session;
+}
+
+// @public
+export type RequestHookResult<Session = unknown> =
+  | AuthorizationFailure
+  | RequestHookSuccess<Session>
+  | undefined;
+
+// @public
+export interface RequestHookSuccess<Session = unknown> {
+  readonly authorized?: true;
+  readonly session?: Session;
+}
 
 // @public
 export interface RouteInstaller {
@@ -228,6 +308,40 @@ export interface RouteInstaller {
 export interface RunningServer {
   close(): void;
   readonly port: number;
+}
+
+// @public
+export interface StaticTokenAuthHookOptions<
+  Session = unknown,
+> extends StaticTokenAuthorizerOptions {
+  readonly createSession?: (
+    request: AuthorizationRequest,
+  ) => MaybePromise<Session>;
+}
+
+// @public
+export class StaticTokenAuthorizer {
+  constructor(options: StaticTokenAuthorizerOptions);
+  // (undocumented)
+  authorize: RequestAuthorizer;
+}
+
+// @public
+export interface StaticTokenAuthorizerOptions {
+  readonly header?: string;
+  readonly queryParam?: string;
+  readonly realm?: string;
+  readonly scheme?: string;
+  readonly token: string;
+}
+
+// @public
+export interface WebSocketConnectionContext<Session = unknown> {
+  readonly authenticated: boolean;
+  readonly authProvided: boolean;
+  readonly locals: Readonly<Record<string, unknown>>;
+  readonly request: AuthorizationRequest;
+  readonly session?: Session;
 }
 
 // @public

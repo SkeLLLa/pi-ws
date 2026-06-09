@@ -106,6 +106,27 @@ The page connects to:
 ws://127.0.0.1:8787/ws/pi
 ```
 
+Optional auth for the built-in Pi route:
+
+```bash
+OPENAI_API_KEY='sk-...' \
+  PI_PROVIDER=openai \
+  PI_MODEL='gpt-4.1' \
+  PI_WS_AUTH_TOKEN='dev-secret' \
+  mise run examples:chat
+```
+
+When `PI_WS_AUTH_TOKEN` is set, the launcher installs an `onAuth` hook with
+`createStaticTokenAuthHook()`. The browser example then authenticates with the
+reserved first websocket message:
+
+```json
+{ "token": "dev-secret", "type": "pi_ws_auth" }
+```
+
+The chat page exposes an **Auth token** field and automatically sends that
+message after `pi_ws_auth_required`.
+
 ### Using Anthropic
 
 ```bash
@@ -268,6 +289,17 @@ pnpm build
 OPENAI_API_KEY='sk-...' PI_PROVIDER=openai PI_MODEL='gpt-4.1' node examples/embedded-server.mjs
 ```
 
+With optional built-in Pi auth and a matching protected HTTP route:
+
+```bash
+pnpm build
+OPENAI_API_KEY='sk-...' \
+  PI_PROVIDER=openai \
+  PI_MODEL='gpt-4.1' \
+  PI_WS_AUTH_TOKEN='dev-secret' \
+  node examples/embedded-server.mjs
+```
+
 It exposes:
 
 | URL                                    | Purpose                     |
@@ -276,6 +308,13 @@ It exposes:
 | `ws://127.0.0.1:8787/ws/pi`            | Pi RPC WebSocket            |
 | `http://127.0.0.1:8787/api/hello`      | Custom HTTP route           |
 | `ws://127.0.0.1:8787/ws/echo`          | Custom WebSocket echo route |
+
+When `PI_WS_AUTH_TOKEN` is set, `embedded-server.mjs` also exposes:
+
+| URL                                   | Purpose                                |
+| ------------------------------------- | -------------------------------------- |
+| `http://127.0.0.1:8787/api/private`   | Protected HTTP route using same token  |
+| `ws://127.0.0.1:8787/ws/pi?token=...` | Query-param auth for non-browser tools |
 
 ## Troubleshooting
 

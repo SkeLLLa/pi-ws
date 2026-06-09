@@ -9,7 +9,11 @@ Registers an HTTP route on the underlying `uWebSockets.js` app.
 **Signature:**
 
 ```typescript
-handle(method: HttpMethod, path: string, handler: HttpHandler): this;
+handle(input: {
+        method: HttpMethod;
+        path: string;
+        handler: HttpHandler;
+    }): this;
 ```
 
 ## Parameters
@@ -29,41 +33,24 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-method
+{ method, path, handler, }
 
 </td><td>
 
-[HttpMethod](./pi-ws.httpmethod.md)
+(not declared)
 
 </td><td>
-
-HTTP method name as expected by `uWebSockets.js`<!-- -->.
 
 </td></tr>
 <tr><td>
 
-path
+input
 
 </td><td>
 
-string
+{ method: [HttpMethod](./pi-ws.httpmethod.md)<!-- -->; path: string; handler: [HttpHandler](./pi-ws.httphandler.md)<!-- -->; }
 
 </td><td>
-
-Route path pattern.
-
-</td></tr>
-<tr><td>
-
-handler
-
-</td><td>
-
-[HttpHandler](./pi-ws.httphandler.md)
-
-</td><td>
-
-Route callback.
 
 </td></tr>
 </tbody></table>

@@ -9,7 +9,7 @@ Merges additional server configuration into the current instance.
 **Signature:**
 
 ```typescript
-configure(config: PiWsOptions): this;
+configure(config: PiWsOptions<Session>): this;
 ```
 
 ## Parameters
@@ -33,7 +33,7 @@ config
 
 </td><td>
 
-[PiWsOptions](./pi-ws.piwsoptions.md)
+[PiWsOptions](./pi-ws.piwsoptions.md)<!-- -->&lt;Session&gt;
 
 </td><td>
 

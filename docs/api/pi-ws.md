@@ -28,6 +28,15 @@ Description
 Library-first wrapper around `uWebSockets.js` that exposes a built-in Pi RPC route and lets callers add their own HTTP and WebSocket handlers.
 
 </td></tr>
+<tr><td>
+
+[StaticTokenAuthorizer](./pi-ws.statictokenauthorizer.md)
+
+</td><td>
+
+Simple shared-secret token authorizer.
+
+</td></tr>
 </tbody></table>
 
 ## Functions
@@ -52,16 +61,23 @@ Combines multiple authorizers using logical AND semantics.
 </td></tr>
 <tr><td>
 
-[createDefaultConfig(env)](./pi-ws.createdefaultconfig.md)
+[composeHooks(hooks)](./pi-ws.composehooks.md)
 
 </td><td>
 
-Creates the built-in default runtime config without reading config files.
+Combines multiple async-capable hooks using logical AND semantics.
 
 </td></tr>
 <tr><td>
 
-[createPiWsServer(config, installers)](./pi-ws.createpiwsserver.md)
+[createDefaultConfig(env)](./pi-ws.createdefaultconfig.md)
+
+</td><td>
+
+</td></tr>
+<tr><td>
+
+[createPiWsServer({ config, installers, }, input)](./pi-ws.createpiwsserver.md)
 
 </td><td>
 
@@ -70,11 +86,29 @@ Convenience factory that creates a `PiWs`<!-- -->, installs routes, and starts l
 </td></tr>
 <tr><td>
 
-[createStaticTokenAuthorizer(options)](./pi-ws.createstatictokenauthorizer.md)
+[createStaticTokenAuthHook(options)](./pi-ws.createstatictokenauthhook.md)
 
 </td><td>
 
-Creates a simple shared-secret token authorizer.
+Creates a reusable static-token request hook.
+
+</td></tr>
+<tr><td>
+
+[getWebSocketContext(ws)](./pi-ws.getwebsocketcontext.md)
+
+</td><td>
+
+Returns the stored upgrade context for a protected WebSocket connection.
+
+</td></tr>
+<tr><td>
+
+[getWebSocketSession(ws)](./pi-ws.getwebsocketsession.md)
+
+</td><td>
+
+Returns the stored session for a protected WebSocket connection.
 
 </td></tr>
 <tr><td>
@@ -88,7 +122,7 @@ Loads `PiWs` configuration from c12 config sources plus `PI_WS_*` environment ov
 </td></tr>
 <tr><td>
 
-[protectHttpHandler(handler, authorize)](./pi-ws.protecthttphandler.md)
+[protectHttpHandler({ handler, authorize, }, input)](./pi-ws.protecthttphandler.md)
 
 </td><td>
 
@@ -97,11 +131,11 @@ Wraps an HTTP handler with synchronous request authorization.
 </td></tr>
 <tr><td>
 
-[protectWebSocketBehavior(behavior, authorize, createUserData)](./pi-ws.protectwebsocketbehavior.md)
+[protectWebSocketBehavior({ behavior, hooks, authHooks, createUserData, }, input)](./pi-ws.protectwebsocketbehavior.md)
 
 </td><td>
 
-Wraps a WebSocket behavior with synchronous request authorization.
+Wraps a WebSocket behavior with request authorization hooks.
 
 </td></tr>
 </tbody></table>
@@ -118,6 +152,15 @@ Description
 
 </th></tr></thead>
 <tbody><tr><td>
+
+[AuthHookInput](./pi-ws.authhookinput.md)
+
+</td><td>
+
+Structured authentication data passed to an auth hook.
+
+</td></tr>
+<tr><td>
 
 [AuthorizationFailure](./pi-ws.authorizationfailure.md)
 
@@ -191,6 +234,15 @@ Options for `loadConfig()`<!-- -->.
 </td></tr>
 <tr><td>
 
+[PiWsHooks](./pi-ws.piwshooks.md)
+
+</td><td>
+
+Hook collections for the built-in Pi WebSocket route.
+
+</td></tr>
+<tr><td>
+
 [PiWsListenOptions](./pi-ws.piwslistenoptions.md)
 
 </td><td>
@@ -218,6 +270,24 @@ TLS settings for running `pi-ws` over HTTPS / WSS.
 </td></tr>
 <tr><td>
 
+[RequestHookContext](./pi-ws.requesthookcontext.md)
+
+</td><td>
+
+Mutable context shared across request hooks during a single request or WebSocket upgrade.
+
+</td></tr>
+<tr><td>
+
+[RequestHookSuccess](./pi-ws.requesthooksuccess.md)
+
+</td><td>
+
+Result returned by a request hook.
+
+</td></tr>
+<tr><td>
+
 [RouteInstaller](./pi-ws.routeinstaller.md)
 
 </td><td>
@@ -232,6 +302,33 @@ Imperative installer for direct `uWebSockets.js` access.
 </td><td>
 
 Running server handle returned by `PiWs.listen()`<!-- -->.
+
+</td></tr>
+<tr><td>
+
+[StaticTokenAuthHookOptions](./pi-ws.statictokenauthhookoptions.md)
+
+</td><td>
+
+Static token auth settings for `createStaticTokenAuthHook()`<!-- -->.
+
+</td></tr>
+<tr><td>
+
+[StaticTokenAuthorizerOptions](./pi-ws.statictokenauthorizeroptions.md)
+
+</td><td>
+
+Static token auth settings for `StaticTokenAuthorizer`<!-- -->.
+
+</td></tr>
+<tr><td>
+
+[WebSocketConnectionContext](./pi-ws.websocketconnectioncontext.md)
+
+</td><td>
+
+Read-only context associated with an upgraded WebSocket connection.
 
 </td></tr>
 <tr><td>
@@ -280,11 +377,29 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
+[AuthHook](./pi-ws.authhook.md)
+
+</td><td>
+
+Async-capable auth hook used by the built-in Pi WebSocket route.
+
+</td></tr>
+<tr><td>
+
 [AuthorizationResult](./pi-ws.authorizationresult.md)
 
 </td><td>
 
 Result returned by a request authorizer.
+
+</td></tr>
+<tr><td>
+
+[AuthSource](./pi-ws.authsource.md)
+
+</td><td>
+
+Source that supplied credentials to an auth hook.
 
 </td></tr>
 <tr><td>
@@ -307,11 +422,38 @@ Supported `uWebSockets.js` HTTP route methods.
 </td></tr>
 <tr><td>
 
+[PiWsHookName](./pi-ws.piwshookname.md)
+
+</td><td>
+
+Supported built-in Pi route hook names.
+
+</td></tr>
+<tr><td>
+
 [RequestAuthorizer](./pi-ws.requestauthorizer.md)
 
 </td><td>
 
 Synchronous request authorizer used by `pi-ws` guards.
+
+</td></tr>
+<tr><td>
+
+[RequestHook](./pi-ws.requesthook.md)
+
+</td><td>
+
+Async-capable request hook used by the built-in Pi WebSocket route and `protectWebSocketBehavior()`<!-- -->.
+
+</td></tr>
+<tr><td>
+
+[RequestHookResult](./pi-ws.requesthookresult.md)
+
+</td><td>
+
+Result returned by a request hook.
 
 </td></tr>
 </tbody></table>

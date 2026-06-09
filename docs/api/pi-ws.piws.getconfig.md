@@ -9,12 +9,12 @@ Returns the current resolved server configuration.
 **Signature:**
 
 ```typescript
-getConfig(): Readonly<PiWsConfig>;
+getConfig(): Readonly<PiWsConfig<Session>>;
 ```
 
 **Returns:**
 
-Readonly&lt;[PiWsConfig](./pi-ws.piwsconfig.md)<!-- -->&gt;
+Readonly&lt;[PiWsConfig](./pi-ws.piwsconfig.md)<!-- -->&lt;Session&gt;&gt;
 
 Current server configuration snapshot.
 

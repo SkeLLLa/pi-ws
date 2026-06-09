@@ -9,7 +9,7 @@ Creates a new `PiWs` instance.
 **Signature:**
 
 ```typescript
-constructor(config?: PiWsOptions);
+constructor(config?: PiWsOptions<Session>);
 ```
 
 ## Parameters
@@ -33,7 +33,7 @@ config
 
 </td><td>
 
-[PiWsOptions](./pi-ws.piwsoptions.md)
+[PiWsOptions](./pi-ws.piwsoptions.md)<!-- -->&lt;Session&gt;
 
 </td><td>
 

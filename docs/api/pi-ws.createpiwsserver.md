@@ -9,10 +9,10 @@ Convenience factory that creates a `PiWs`<!-- -->, installs routes, and starts l
 **Signature:**
 
 ```typescript
-export declare function createPiWsServer(
-  config: PiWsOptions,
-  installers?: readonly RouteInstaller[],
-): Promise<RunningServer>;
+export declare function createPiWsServer<Session = unknown>(input: {
+  config: PiWsOptions<Session>;
+  installers?: readonly RouteInstaller[];
+}): Promise<RunningServer>;
 ```
 
 ## Parameters
@@ -32,28 +32,24 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-config
+{ config, installers, }
 
 </td><td>
 
-[PiWsOptions](./pi-ws.piwsoptions.md)
+(not declared)
 
 </td><td>
-
-Partial server options merged over built-in defaults.
 
 </td></tr>
 <tr><td>
 
-installers
+input
 
 </td><td>
 
-readonly [RouteInstaller](./pi-ws.routeinstaller.md)<!-- -->\[\]
+{ config: [PiWsOptions](./pi-ws.piwsoptions.md)<!-- -->&lt;Session&gt;; installers?: readonly [RouteInstaller](./pi-ws.routeinstaller.md)<!-- -->\[\]; }
 
 </td><td>
-
-_(Optional)_ Optional route installers applied before listening.
 
 </td></tr>
 </tbody></table>

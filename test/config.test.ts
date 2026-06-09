@@ -65,16 +65,26 @@ void test('loadConfig parses env overrides', async () => {
   assert.ok(config.tls);
   assert.equal(config.tls.keyFileName, '/tls/key.pem');
   assert.equal(config.tls.certFileName, '/tls/cert.pem');
-  assert.ok(config.piAuth);
-  assert.equal(
-    config.piAuth({
-      method: 'GET',
-      path: '/ws/pi',
-      query: 'token=secret',
-      url: '/ws/pi?token=secret',
-      queryParams: { token: 'secret' },
-      headers: {},
-    }).authorized,
-    true,
+  const onAuthHooks = config.piHooks?.onAuth;
+  assert.ok(onAuthHooks);
+  assert.equal(onAuthHooks.length, 1);
+  const [onAuthHook] = onAuthHooks;
+  assert.ok(onAuthHook);
+  const decision = await onAuthHook(
+    {
+      source: 'request',
+      provided: true,
+      token: 'secret',
+      request: {
+        method: 'GET',
+        path: '/ws/pi',
+        query: 'token=secret',
+        url: '/ws/pi?token=secret',
+        queryParams: { token: 'secret' },
+        headers: {},
+      },
+    },
+    { locals: {} },
   );
+  assert.notEqual(decision?.authorized, false);
 });

@@ -23,6 +23,16 @@
           <input id="ws-url" name="ws-url" type="url" />
           <button id="connect" type="button">Connect</button>
         </div>
+        <label for="auth-token">Auth token</label>
+        <div class="connection-row">
+          <input
+            id="auth-token"
+            name="auth-token"
+            type="password"
+            placeholder="Optional. Used when the server requires onAuth."
+          />
+          <button id="authenticate" type="button">Authenticate</button>
+        </div>
         <p id="status" class="status">Disconnected</p>
       </section>
 

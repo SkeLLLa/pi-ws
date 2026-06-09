@@ -35,22 +35,26 @@ export function resolvePiCommand(config: PiProcessConfig): ResolvedPiCommand {
 function buildPiArgs(config: PiProcessConfig): string[] {
   const args = ['--mode', 'rpc'];
 
-  pushFlag(args, '--provider', config.provider);
-  pushFlag(args, '--model', config.model);
-  pushFlag(args, '--thinking', config.thinking);
-  pushFlag(args, '--name', config.sessionName);
-  pushFlag(args, '--system-prompt', config.systemPrompt);
+  pushFlag({ target: args, flag: '--provider', value: config.provider });
+  pushFlag({ target: args, flag: '--model', value: config.model });
+  pushFlag({ target: args, flag: '--thinking', value: config.thinking });
+  pushFlag({ target: args, flag: '--name', value: config.sessionName });
+  pushFlag({
+    target: args,
+    flag: '--system-prompt',
+    value: config.systemPrompt,
+  });
 
   for (const prompt of config.appendSystemPrompt ?? []) {
-    pushFlag(args, '--append-system-prompt', prompt);
+    pushFlag({ target: args, flag: '--append-system-prompt', value: prompt });
   }
 
   for (const extension of config.extensions ?? []) {
-    pushFlag(args, '--extension', extension);
+    pushFlag({ target: args, flag: '--extension', value: extension });
   }
 
   for (const template of config.promptTemplates ?? []) {
-    pushFlag(args, '--prompt-template', template);
+    pushFlag({ target: args, flag: '--prompt-template', value: template });
   }
 
   args.push(...stripModeArgs(config.args));
@@ -79,13 +83,17 @@ function stripModeArgs(args: readonly string[]): string[] {
   return normalized;
 }
 
-function pushFlag(
-  args: string[],
-  flag: string,
-  value: string | undefined,
-): void {
+function pushFlag({
+  target,
+  flag,
+  value,
+}: {
+  target: string[];
+  flag: string;
+  value: string | undefined;
+}): void {
   if (value === undefined || value.trim() === '') return;
-  args.push(flag, value);
+  target.push(flag, value);
 }
 
 function resolveBundledPiCli(): string | undefined {

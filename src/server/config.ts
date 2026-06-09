@@ -3,14 +3,14 @@ import {
   loadConfig as loadC12Config,
   type DotenvOptions,
 } from 'c12';
-import { createStaticTokenAuthorizer } from './auth.js';
+import { createStaticTokenAuthHook } from './auth.js';
 import type {
   PiProcessConfig,
   PiProcessOptions,
   PiWsConfig,
+  PiWsHooks,
   PiWsOptions,
   PiWsTlsConfig,
-  RequestAuthorizer,
 } from './types.js';
 
 const DEFAULT_HOST = '0.0.0.0';
@@ -127,13 +127,13 @@ export async function loadConfig(
   options: PiWsConfigLoaderOptions = {},
 ): Promise<PiWsConfig> {
   const env = options.env ?? process.env;
-  const defaults = createDefaultOptions(env);
-  const envOverrides = loadEnvOverrides(env);
-  const mergedOverrides = mergeOptions(
-    envOverrides,
-    options.overrides ?? {},
-    env,
-  );
+  const resolver = new ConfigResolver({ env });
+  const defaults = resolver.defaults();
+  const envOverrides = resolver.loadEnvOverrides();
+  const mergedOverrides = resolver.merge({
+    base: envOverrides,
+    override: options.overrides ?? {},
+  });
 
   const resolved = await loadC12Config<PiWsOptions>({
     name: 'pi-ws',
@@ -148,68 +148,109 @@ export async function loadConfig(
     },
     defaults,
     overrides: mergedOverrides,
-    merger: (...sources) => mergeOptionsList(env, sources),
+    merger: (...sources) => resolver.mergeList(sources),
   });
 
-  return resolveConfig(env, resolved.config);
+  return resolver.resolve(resolved.config);
 }
 
-/**
- * Creates the built-in default runtime config without reading config files.
- *
- * @remarks
- * This is mainly useful for embedding scenarios where you want the same
- * runtime defaults as `PiWs` itself but intend to configure the server
- * entirely in code.
- *
- * @param env - Environment forwarded to the spawned Pi subprocess by default.
- * @returns Fully-resolved default runtime configuration.
- * @public
- */
 export function createDefaultConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): PiWsConfig {
-  return resolveConfig(env, createDefaultOptions(env));
+  const resolver = new ConfigResolver({ env });
+  return resolver.resolve(resolver.defaults());
 }
 
-function createDefaultOptions(env: NodeJS.ProcessEnv): PiWsOptions {
-  return {
-    host: DEFAULT_HOST,
-    port: DEFAULT_PORT,
-    wsPrefix: DEFAULT_WS_PREFIX,
-    maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES,
-    chatExample: true,
-    pi: {
-      args: [],
-      env: pickPiEnvironment(env),
-    },
-  };
-}
+class ConfigResolver {
+  readonly #env: NodeJS.ProcessEnv;
 
-function loadEnvOverrides(env: NodeJS.ProcessEnv): PiWsOptions {
-  const tls = loadTlsConfig(env);
-  const piAuth = loadPiAuth(env);
-  const pi = loadPiOptions(env);
+  constructor({ env }: { env: NodeJS.ProcessEnv }) {
+    this.#env = env;
+  }
 
-  return {
-    ...optionalValue(optionalNonEmpty(env['PI_WS_HOST']), 'host'),
-    ...optionalValue(parsePort(env['PI_WS_PORT']), 'port'),
-    ...optionalValue(parsePrefix(env['PI_WS_PREFIX']), 'wsPrefix'),
-    ...optionalValue(
-      parsePositiveInteger(
-        env['PI_WS_MAX_PAYLOAD_BYTES'],
-        'PI_WS_MAX_PAYLOAD_BYTES',
+  defaults(): PiWsOptions {
+    return {
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT,
+      wsPrefix: DEFAULT_WS_PREFIX,
+      maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES,
+      chatExample: true,
+      pi: {
+        args: [],
+        env: pickPiEnvironment(this.#env),
+      },
+    };
+  }
+
+  loadEnvOverrides(): PiWsOptions {
+    const env = this.#env;
+    const tls = loadTlsConfig(env);
+    const piHooks = loadPiHooks(env);
+    const pi = loadPiOptions(env);
+
+    return {
+      ...optionalValue(optionalNonEmpty(env['PI_WS_HOST']), 'host'),
+      ...optionalValue(parsePort(env['PI_WS_PORT']), 'port'),
+      ...optionalValue(parsePrefix(env['PI_WS_PREFIX']), 'wsPrefix'),
+      ...optionalValue(
+        parsePositiveInteger(
+          env['PI_WS_MAX_PAYLOAD_BYTES'],
+          'PI_WS_MAX_PAYLOAD_BYTES',
+        ),
+        'maxPayloadBytes',
       ),
-      'maxPayloadBytes',
-    ),
-    ...optionalValue(
-      parseBoolean(env['PI_WS_CHAT_EXAMPLE'], 'PI_WS_CHAT_EXAMPLE'),
-      'chatExample',
-    ),
-    ...optionalValue(tls, 'tls'),
-    ...optionalValue(piAuth, 'piAuth'),
-    ...(isPiOptionsEmpty(pi) ? {} : { pi }),
-  };
+      ...optionalValue(
+        parseBoolean(env['PI_WS_CHAT_EXAMPLE'], 'PI_WS_CHAT_EXAMPLE'),
+        'chatExample',
+      ),
+      ...optionalValue(tls, 'tls'),
+      ...optionalValue(piHooks, 'piHooks'),
+      ...(isPiOptionsEmpty(pi) ? {} : { pi }),
+    };
+  }
+
+  resolve(config: PiWsOptions): PiWsConfig {
+    return {
+      host: config.host ?? DEFAULT_HOST,
+      port: config.port ?? DEFAULT_PORT,
+      wsPrefix: config.wsPrefix ?? DEFAULT_WS_PREFIX,
+      maxPayloadBytes: config.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES,
+      ...(config.tls === undefined ? {} : { tls: config.tls }),
+      pi: resolvePiConfig(this.#env, config.pi),
+      ...(config.piHooks === undefined ? {} : { piHooks: config.piHooks }),
+      chatExample: config.chatExample ?? true,
+    };
+  }
+
+  merge({
+    base,
+    override,
+  }: {
+    base: PiWsOptions;
+    override: PiWsOptions;
+  }): PiWsOptions {
+    const pi = mergePiOptions(base.pi, override.pi, this.#env);
+
+    return {
+      ...base,
+      ...override,
+      ...(pi === undefined ? {} : { pi }),
+      ...mergeOptionalObject(base, override, 'tls'),
+      ...mergeOptionalObject(base, override, 'piHooks'),
+    };
+  }
+
+  mergeList(sources: (PiWsOptions | null | undefined)[]): PiWsOptions {
+    let resolved = this.defaults();
+
+    for (let index = sources.length - 1; index >= 0; index -= 1) {
+      const source = sources[index];
+      if (source === undefined || source === null) continue;
+      resolved = this.merge({ base: resolved, override: source });
+    }
+
+    return resolved;
+  }
 }
 
 function loadPiOptions(env: NodeJS.ProcessEnv): PiProcessOptions {
@@ -287,35 +328,23 @@ function loadTlsConfig(env: NodeJS.ProcessEnv): PiWsTlsConfig | undefined {
   };
 }
 
-function loadPiAuth(env: NodeJS.ProcessEnv): RequestAuthorizer | undefined {
+function loadPiHooks(env: NodeJS.ProcessEnv): PiWsHooks | undefined {
   const token = optionalNonEmpty(env['PI_WS_AUTH_TOKEN']);
   if (token === undefined) return undefined;
 
-  return createStaticTokenAuthorizer({
-    token,
-    header: optionalNonEmpty(env['PI_WS_AUTH_HEADER']) ?? 'authorization',
-    scheme: optionalNonEmpty(env['PI_WS_AUTH_SCHEME']) ?? 'Bearer',
-    ...optionalValue(
-      optionalNonEmpty(env['PI_WS_AUTH_QUERY_PARAM']),
-      'queryParam',
-    ),
-    ...optionalValue(optionalNonEmpty(env['PI_WS_AUTH_REALM']), 'realm'),
-  });
-}
-
-function resolveConfig(
-  env: NodeJS.ProcessEnv,
-  config: PiWsOptions,
-): PiWsConfig {
   return {
-    host: config.host ?? DEFAULT_HOST,
-    port: config.port ?? DEFAULT_PORT,
-    wsPrefix: config.wsPrefix ?? DEFAULT_WS_PREFIX,
-    maxPayloadBytes: config.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES,
-    ...(config.tls === undefined ? {} : { tls: config.tls }),
-    pi: resolvePiConfig(env, config.pi),
-    ...(config.piAuth === undefined ? {} : { piAuth: config.piAuth }),
-    chatExample: config.chatExample ?? true,
+    onAuth: [
+      createStaticTokenAuthHook({
+        token,
+        header: optionalNonEmpty(env['PI_WS_AUTH_HEADER']) ?? 'authorization',
+        scheme: optionalNonEmpty(env['PI_WS_AUTH_SCHEME']) ?? 'Bearer',
+        ...optionalValue(
+          optionalNonEmpty(env['PI_WS_AUTH_QUERY_PARAM']),
+          'queryParam',
+        ),
+        ...optionalValue(optionalNonEmpty(env['PI_WS_AUTH_REALM']), 'realm'),
+      }),
+    ],
   };
 }
 
@@ -340,37 +369,6 @@ function resolvePiConfig(
   };
 }
 
-function mergeOptions(
-  base: PiWsOptions,
-  override: PiWsOptions,
-  env: NodeJS.ProcessEnv,
-): PiWsOptions {
-  const pi = mergePiOptions(base.pi, override.pi, env);
-
-  return {
-    ...base,
-    ...override,
-    ...(pi === undefined ? {} : { pi }),
-    ...mergeOptionalObject(base, override, 'tls'),
-    ...mergeOptionalObject(base, override, 'piAuth'),
-  };
-}
-
-function mergeOptionsList(
-  env: NodeJS.ProcessEnv,
-  sources: (PiWsOptions | null | undefined)[],
-): PiWsOptions {
-  let resolved = createDefaultOptions(env);
-
-  for (let index = sources.length - 1; index >= 0; index -= 1) {
-    const source = sources[index];
-    if (source === undefined || source === null) continue;
-    resolved = mergeOptions(resolved, source, env);
-  }
-
-  return resolved;
-}
-
 function mergePiOptions(
   base: PiProcessOptions | undefined,
   override: PiProcessOptions | undefined,
@@ -391,7 +389,7 @@ function mergePiOptions(
 }
 
 function mergeOptionalObject<
-  Key extends 'tls' | 'piAuth',
+  Key extends 'tls' | 'piHooks',
   Value extends PiWsOptions[Key],
 >(
   base: PiWsOptions,

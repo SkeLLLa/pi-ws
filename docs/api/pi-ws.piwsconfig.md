@@ -9,7 +9,7 @@ Runtime configuration for a `PiWs` instance.
 **Signature:**
 
 ```typescript
-export interface PiWsConfig
+export interface PiWsConfig<Session = unknown>
 ```
 
 ## Remarks
@@ -105,7 +105,7 @@ Pi subprocess launch configuration.
 </td></tr>
 <tr><td>
 
-[piAuth?](./pi-ws.piwsconfig.piauth.md)
+[piHooks?](./pi-ws.piwsconfig.pihooks.md)
 
 </td><td>
 
@@ -113,11 +113,11 @@ Pi subprocess launch configuration.
 
 </td><td>
 
-[RequestAuthorizer](./pi-ws.requestauthorizer.md)
+[PiWsHooks](./pi-ws.piwshooks.md)<!-- -->&lt;Session&gt;
 
 </td><td>
 
-_(Optional)_ Optional authorizer for the built-in Pi WebSocket route at `${wsPrefix}/pi`<!-- -->.
+_(Optional)_ Optional hooks for the built-in Pi WebSocket route at `${wsPrefix}/pi`<!-- -->.
 
 </td></tr>
 <tr><td>

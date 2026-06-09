@@ -4,16 +4,23 @@
 
 ## protectWebSocketBehavior() function
 
-Wraps a WebSocket behavior with synchronous request authorization.
+Wraps a WebSocket behavior with request authorization hooks.
 
 **Signature:**
 
 ```typescript
-export declare function protectWebSocketBehavior<UserData>(
-  behavior: WebSocketBehavior<UserData>,
-  authorize: RequestAuthorizer,
-  createUserData?: (request: AuthorizationRequest) => UserData,
-): WebSocketBehavior<UserData>;
+export declare function protectWebSocketBehavior<
+  UserData,
+  Session = unknown,
+>(input: {
+  behavior: Omit<WebSocketBehavior<UserData>, 'upgrade'>;
+  hooks?: readonly RequestHook<Session>[];
+  authHooks?: readonly AuthHook<Session>[];
+  createUserData?: (
+    request: AuthorizationRequest,
+    context: WebSocketConnectionContext<Session>,
+  ) => UserData;
+}): WebSocketBehavior<UserData>;
 ```
 
 ## Parameters
@@ -33,41 +40,24 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-behavior
+{ behavior, hooks, authHooks, createUserData, }
 
 </td><td>
 
-WebSocketBehavior&lt;UserData&gt;
+(not declared)
 
 </td><td>
-
-Original WebSocket behavior.
 
 </td></tr>
 <tr><td>
 
-authorize
+input
 
 </td><td>
 
-[RequestAuthorizer](./pi-ws.requestauthorizer.md)
+{ behavior: Omit&lt;WebSocketBehavior&lt;UserData&gt;, 'upgrade'&gt;; hooks?: readonly [RequestHook](./pi-ws.requesthook.md)<!-- -->&lt;Session&gt;\[\]; authHooks?: readonly [AuthHook](./pi-ws.authhook.md)<!-- -->&lt;Session&gt;\[\]; createUserData?: (request: [AuthorizationRequest](./pi-ws.authorizationrequest.md)<!-- -->, context: [WebSocketConnectionContext](./pi-ws.websocketconnectioncontext.md)<!-- -->&lt;Session&gt;) =&gt; UserData; }
 
 </td><td>
-
-Authorizer to run before upgrade.
-
-</td></tr>
-<tr><td>
-
-createUserData
-
-</td><td>
-
-(request: [AuthorizationRequest](./pi-ws.authorizationrequest.md)<!-- -->) =&gt; UserData
-
-</td><td>
-
-_(Optional)_ Optional user-data factory for auto-upgrade.
 
 </td></tr>
 </tbody></table>
@@ -80,4 +70,4 @@ Protected behavior.
 
 ## Remarks
 
-If the wrapped behavior does not define its own `upgrade` handler, `pi-ws` upgrades the socket automatically after successful authorization using either the provided `createUserData()` callback or an empty object.
+This follows the async upgrade pattern from the `uWebSockets.js` `UpgradeAsync.js` example: it snapshots request data immediately, registers `res.onAborted()`<!-- -->, runs hooks asynchronously, then upgrades inside `res.cork()` with the copied headers.
