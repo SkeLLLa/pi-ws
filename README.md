@@ -262,20 +262,19 @@ Route registration order is:
 7. final catch-all 404 route
 
 ```mermaid
-flowchart LR
+flowchart TD
     Client[Browser or WS client]
-    Server[pi-ws server]
-    UWS[uWebSockets.js app]
+    UWS[uWebSockets.js websocket]
     Bridge[Pi bridge]
     Pi[Pi CLI in RPC mode]
 
-    Client -->|WS text JSON to /ws/pi| Server
-    Server --> UWS
-    UWS --> Bridge
+    Client -->|WS text JSON to /ws/pi| UWS
+    UWS -->|message event| Bridge
     Bridge -->|stdin JSONL| Pi
     Pi -->|stdout JSONL| Bridge
-    Bridge -->|WS text JSON| Client
     Pi -->|stderr and exit| Bridge
+    Bridge -->|ws.send JSON text| UWS
+    UWS -->|WS frames| Client
 ```
 
 Example embedded usage:
