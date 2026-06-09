@@ -12,13 +12,13 @@
     "json-rpc",
     "server"
   ],
-  "homepage": "https://github.com/SkeLLLa/pi-pipe/blob/master/README.md",
+  "homepage": "https://github.com/SkeLLLa/pi-ws/blob/master/README.md",
   "bugs": {
-    "url": "https://github.com/SkeLLLa/pi-pipe/issues"
+    "url": "https://github.com/SkeLLLa/pi-ws/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SkeLLLa/pi-pipe.git"
+    "url": "git+https://github.com/SkeLLLa/pi-ws.git"
   },
   "license": "MIT",
   "author": "m03geek",

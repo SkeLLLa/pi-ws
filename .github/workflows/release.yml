@@ -82,6 +82,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Use Node.js
         uses: actions/setup-node@v6
         with:
@@ -112,4 +114,4 @@ jobs:
         run: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # NPM_TOKEN not needed when npm trusted publishing is enabled for the package.
+          # npm trusted publishing uses GitHub OIDC; do not set NPM_TOKEN here.

@@ -1,4 +1,8 @@
 module.exports = {
+  repositoryUrl:
+    process.env.GITHUB_REPOSITORY != null
+      ? `https://github.com/${process.env.GITHUB_REPOSITORY}.git`
+      : 'https://github.com/SkeLLLa/pi-ws.git',
   branches: [
     { name: 'master', prerelease: false },
     { name: 'next', prerelease: true },
