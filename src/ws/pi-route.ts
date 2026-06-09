@@ -4,12 +4,14 @@ import {
   type WebSocketBehavior,
 } from 'uWebSockets.js';
 import { startPiRpcProcess, type PiRpcProcess } from '../pi/rpc-process.js';
-import type { PiProcessConfig } from '../server/types.js';
+import { protectWebSocketBehavior } from '../server/auth.js';
+import type { PiProcessConfig, RequestAuthorizer } from '../server/types.js';
 import { parseJsonObject } from '../utils/jsonl.js';
 
 interface PiWebSocketOptions {
   readonly pi: PiProcessConfig;
   readonly maxPayloadBytes: number;
+  readonly authorize?: RequestAuthorizer;
 }
 
 interface PiSocketData {
@@ -20,7 +22,7 @@ interface PiSocketData {
 export function createPiWebSocketRoute(
   options: PiWebSocketOptions,
 ): WebSocketBehavior<PiSocketData> {
-  return {
+  const behavior: WebSocketBehavior<PiSocketData> = {
     compression: DISABLED,
     maxBackpressure: 1024 * 1024,
     maxPayloadLength: options.maxPayloadBytes,
@@ -92,6 +94,16 @@ export function createPiWebSocketRoute(
       delete data.peer;
     },
   };
+
+  if (options.authorize === undefined) {
+    return behavior;
+  }
+
+  return protectWebSocketBehavior(
+    behavior,
+    options.authorize,
+    (): PiSocketData => ({ closed: false }),
+  );
 }
 
 function sendEvent(

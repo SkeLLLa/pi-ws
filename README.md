@@ -57,21 +57,46 @@ pnpm build:docs
 
 ## Library Usage
 
-`pi-ws` is library-first. Embed `PiWs`, add your routes, then listen:
+`pi-ws` is library-first. Embed `PiWs`, add your routes, and optionally layer
+TLS, route protection, and Pi customization on top:
 
 ```ts
-import { PiWs } from 'pi-ws';
+import { createStaticTokenAuthorizer, PiWs, protectHttpHandler } from 'pi-ws';
 
-const pipe = new PiWs({
-  host: '127.0.0.1',
-  port: 8787,
+const pipe = new PiWs()
+  .configure({
+    host: '127.0.0.1',
+    port: 8787,
+  })
+  .configureTls({
+    keyFileName: './certs/dev-key.pem',
+    certFileName: './certs/dev-cert.pem',
+  })
+  .configurePi({
+    args: ['--no-session'],
+    provider: 'openai',
+    model: 'gpt-4.1',
+    systemPrompt: 'You are a careful release engineer.',
+    appendSystemPrompt: ['Always summarize risks first.'],
+    promptTemplates: ['./.pi/prompts/review.md'],
+  });
+
+const tokenAuth = createStaticTokenAuthorizer({
+  token: process.env.PI_WS_AUTH_TOKEN ?? 'dev-secret',
+  queryParam: 'token',
 });
 
-pipe.handle('get', '/api/version', (res) => {
-  res
-    .writeHeader('content-type', 'application/json')
-    .end(JSON.stringify({ version: 'local-dev' }));
-});
+pipe.authorize(tokenAuth);
+
+pipe.handle(
+  'get',
+  '/api/version',
+  protectHttpHandler((res) => {
+    res
+      .writeHeader('content-type', 'application/json')
+      .end(JSON.stringify({ version: 'local-dev' }));
+  }, tokenAuth),
+);
 
 pipe.route('/ws/echo', {
   message(ws, message, isBinary) {
@@ -84,7 +109,9 @@ await pipe.listen();
 
 The built-in Pi RPC route remains available at `/ws/pi`. Use `handle()` for
 HTTP routes, `route()` for WebSocket routes, and `use()` for direct
-`uWebSockets.js` access when needed.
+`uWebSockets.js` access when needed. Use `authorize()` to protect the built-in
+Pi route, and `protectHttpHandler()` / `protectWebSocketBehavior()` to reuse
+the same auth logic on your own routes.
 
 For the full exported API surface, see [docs/api/pi-ws.md](docs/api/pi-ws.md).
 
@@ -122,7 +149,7 @@ Create `server.mjs`:
 ```js
 import { PiWs } from 'pi-ws';
 
-const pipe = new PiWs({
+const pipe = new PiWs().configure({
   host: '127.0.0.1',
   port: 8787,
 });
@@ -147,7 +174,10 @@ node server.mjs
 The `pi-ws` binary is a thin wrapper around the library:
 
 ```ts
-const pipe = new PiWs();
+import { loadConfig, PiWs } from 'pi-ws';
+
+const config = await loadConfig();
+const pipe = new PiWs(config);
 await pipe.listen();
 ```
 
@@ -225,15 +255,120 @@ Type a JSON command such as `{"type":"get_state"}` and press Enter. Exit with
 
 ## Configuration
 
+`pi-ws` now uses `c12` v4 for configuration loading. The binary resolves
+configuration from:
+
+1. explicit `loadConfig({ overrides })` values
+2. `PI_WS_*` environment variables
+3. `pi-ws.config.*` files in the current working directory
+4. the `pi-ws` field in `package.json`
+5. built-in defaults
+
+### Config File
+
+Create `pi-ws.config.ts`:
+
+```ts
+import { definePiWsConfig } from 'pi-ws';
+
+export default definePiWsConfig({
+  host: '127.0.0.1',
+  port: 8787,
+  pi: {
+    provider: 'openai',
+    model: 'gpt-4.1',
+    systemPrompt: 'You are a careful release engineer.',
+  },
+});
+```
+
+Then run:
+
+```bash
+pi-ws
+```
+
+### Env Overrides
+
 - `PI_WS_HOST` — bind host, default `0.0.0.0`
 - `PI_WS_PORT` — bind port, default `8787`
 - `PI_WS_PREFIX` — WebSocket prefix, default `/ws`
 - `PI_WS_MAX_PAYLOAD_BYTES` — max inbound frame size, default `1048576`
+- `PI_WS_TLS_KEY_FILE` / `PI_WS_TLS_CERT_FILE` — enable HTTPS / WSS with TLS
+  key and certificate PEM files
+- `PI_WS_TLS_CA_FILE` — optional CA bundle
+- `PI_WS_TLS_PASSPHRASE` — optional private-key passphrase
+- `PI_WS_TLS_DH_PARAMS_FILE` — optional DH params file
+- `PI_WS_TLS_CIPHERS` — optional OpenSSL cipher suite override
+- `PI_WS_TLS_PREFER_LOW_MEMORY_USAGE` — optional TLS memory tuning flag
+- `PI_WS_AUTH_TOKEN` — shared secret for the built-in `/ws/pi` route
+- `PI_WS_AUTH_HEADER` — header checked by token auth, default
+  `authorization`
+- `PI_WS_AUTH_SCHEME` — auth scheme prefix, default `Bearer`
+- `PI_WS_AUTH_QUERY_PARAM` — optional query-string token parameter for browser
+  WebSocket clients
+- `PI_WS_AUTH_REALM` — optional `WWW-Authenticate` realm
 - `PI_WS_PI_COMMAND` — optional pi command override; bundled pi is used by
   default
-- `PI_WS_PI_ARGS` — extra pi args after `--mode rpc`; use whitespace
-  separated args or a JSON string array
+- `PI_WS_PI_ARGS` — extra raw pi args appended after generated flags; use
+  whitespace separated args or a JSON string array
 - `PI_WS_PI_CWD` — optional pi subprocess working directory
+- `PI_WS_PI_AGENT_DIR` — optional `PI_CODING_AGENT_DIR` override for shipping
+  custom Pi resources with your app
+- `PI_WS_PI_PROVIDER` — optional pi provider, such as `openai`
+- `PI_WS_PI_MODEL` — optional pi model pattern or ID
+- `PI_WS_PI_THINKING` — optional pi thinking level
+- `PI_WS_PI_NAME` — optional session display name
+- `PI_WS_PI_SYSTEM_PROMPT` — replace Pi’s system prompt
+- `PI_WS_PI_APPEND_SYSTEM_PROMPT` — one extra system prompt string or a JSON
+  string array of repeated append prompts
+- `PI_WS_PI_EXTENSIONS` — one extension source or a JSON string array of
+  repeated `--extension` flags
+- `PI_WS_PI_PROMPT_TEMPLATES` — one prompt template path or a JSON string
+  array of repeated `--prompt-template` flags
+
+## Extensibility
+
+The extension surface stays small on purpose:
+
+- `tls` switches the server from `App()` to `SSLApp()` and keeps the rest of
+  the API unchanged.
+- `authorize()` protects the built-in Pi bridge route.
+- `createStaticTokenAuthorizer()` gives you a ready-made shared-secret auth
+  policy for headers and browser-friendly query tokens.
+- `protectHttpHandler()` and `protectWebSocketBehavior()` let you reuse the
+  same auth logic on your own routes.
+- `pi.agentDir`, `pi.systemPrompt`, `pi.appendSystemPrompt`,
+  `pi.extensions`, and `pi.promptTemplates` map directly to Pi’s documented
+  customization mechanisms instead of inventing a parallel plugin system.
+
+Example: protect the built-in Pi route and one custom HTTP route with the same
+token policy:
+
+```ts
+import { createStaticTokenAuthorizer, PiWs, protectHttpHandler } from 'pi-ws';
+
+const authorize = createStaticTokenAuthorizer({
+  token: 'change-me',
+  queryParam: 'token',
+});
+
+const pipe = new PiWs({
+  chatExample: false,
+});
+
+pipe.authorize(authorize);
+
+pipe.handle(
+  'get',
+  '/api/private',
+  protectHttpHandler((res) => {
+    res.end('ok');
+  }, authorize),
+);
+
+await pipe.listen();
+```
 
 ## Architecture
 

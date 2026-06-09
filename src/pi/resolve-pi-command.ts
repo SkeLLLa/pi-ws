@@ -9,10 +9,12 @@ export interface ResolvedPiCommand {
 }
 
 export function resolvePiCommand(config: PiProcessConfig): ResolvedPiCommand {
+  const args = buildPiArgs(config);
+
   if (config.command !== undefined && config.command.trim() !== '') {
     return {
       command: config.command,
-      args: config.args,
+      args,
     };
   }
 
@@ -20,14 +22,70 @@ export function resolvePiCommand(config: PiProcessConfig): ResolvedPiCommand {
   if (bundledCli !== undefined) {
     return {
       command: process.execPath,
-      args: [bundledCli, ...config.args],
+      args: [bundledCli, ...args],
     };
   }
 
   return {
     command: 'pi',
-    args: config.args,
+    args,
   };
+}
+
+function buildPiArgs(config: PiProcessConfig): string[] {
+  const args = ['--mode', 'rpc'];
+
+  pushFlag(args, '--provider', config.provider);
+  pushFlag(args, '--model', config.model);
+  pushFlag(args, '--thinking', config.thinking);
+  pushFlag(args, '--name', config.sessionName);
+  pushFlag(args, '--system-prompt', config.systemPrompt);
+
+  for (const prompt of config.appendSystemPrompt ?? []) {
+    pushFlag(args, '--append-system-prompt', prompt);
+  }
+
+  for (const extension of config.extensions ?? []) {
+    pushFlag(args, '--extension', extension);
+  }
+
+  for (const template of config.promptTemplates ?? []) {
+    pushFlag(args, '--prompt-template', template);
+  }
+
+  args.push(...stripModeArgs(config.args));
+  return args;
+}
+
+function stripModeArgs(args: readonly string[]): string[] {
+  const normalized: string[] = [];
+
+  for (const [index, arg] of args.entries()) {
+    if (arg === '--mode') {
+      continue;
+    }
+
+    if (index > 0 && args[index - 1] === '--mode') {
+      continue;
+    }
+
+    if (arg.startsWith('--mode=')) {
+      continue;
+    }
+
+    normalized.push(arg);
+  }
+
+  return normalized;
+}
+
+function pushFlag(
+  args: string[],
+  flag: string,
+  value: string | undefined,
+): void {
+  if (value === undefined || value.trim() === '') return;
+  args.push(flag, value);
 }
 
 function resolveBundledPiCli(): string | undefined {

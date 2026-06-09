@@ -43,6 +43,24 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
+[composeAuthorizers(authorizers)](./pi-ws.composeauthorizers.md)
+
+</td><td>
+
+Combines multiple authorizers using logical AND semantics.
+
+</td></tr>
+<tr><td>
+
+[createDefaultConfig(env)](./pi-ws.createdefaultconfig.md)
+
+</td><td>
+
+Creates the built-in default runtime config without reading config files.
+
+</td></tr>
+<tr><td>
+
 [createPiWsServer(config, installers)](./pi-ws.createpiwsserver.md)
 
 </td><td>
@@ -52,11 +70,38 @@ Convenience factory that creates a `PiWs`<!-- -->, installs routes, and starts l
 </td></tr>
 <tr><td>
 
-[loadConfig(env)](./pi-ws.loadconfig.md)
+[createStaticTokenAuthorizer(options)](./pi-ws.createstatictokenauthorizer.md)
 
 </td><td>
 
-Loads `PiWs` configuration from environment variables.
+Creates a simple shared-secret token authorizer.
+
+</td></tr>
+<tr><td>
+
+[loadConfig(options)](./pi-ws.loadconfig.md)
+
+</td><td>
+
+Loads `PiWs` configuration from c12 config sources plus `PI_WS_*` environment overrides.
+
+</td></tr>
+<tr><td>
+
+[protectHttpHandler(handler, authorize)](./pi-ws.protecthttphandler.md)
+
+</td><td>
+
+Wraps an HTTP handler with synchronous request authorization.
+
+</td></tr>
+<tr><td>
+
+[protectWebSocketBehavior(behavior, authorize, createUserData)](./pi-ws.protectwebsocketbehavior.md)
+
+</td><td>
+
+Wraps a WebSocket behavior with synchronous request authorization.
 
 </td></tr>
 </tbody></table>
@@ -73,6 +118,33 @@ Description
 
 </th></tr></thead>
 <tbody><tr><td>
+
+[AuthorizationFailure](./pi-ws.authorizationfailure.md)
+
+</td><td>
+
+Failed authorization result.
+
+</td></tr>
+<tr><td>
+
+[AuthorizationRequest](./pi-ws.authorizationrequest.md)
+
+</td><td>
+
+Structured view of an incoming HTTP or WebSocket-upgrade request.
+
+</td></tr>
+<tr><td>
+
+[AuthorizationSuccess](./pi-ws.authorizationsuccess.md)
+
+</td><td>
+
+Successful authorization result.
+
+</td></tr>
+<tr><td>
 
 [HttpRoute](./pi-ws.httproute.md)
 
@@ -92,6 +164,15 @@ Process launch settings for the local Pi RPC subprocess.
 </td></tr>
 <tr><td>
 
+[PiProcessOptions](./pi-ws.piprocessoptions.md)
+
+</td><td>
+
+Partial Pi subprocess configuration accepted from callers and config files.
+
+</td></tr>
+<tr><td>
+
 [PiWsConfig](./pi-ws.piwsconfig.md)
 
 </td><td>
@@ -101,11 +182,38 @@ Runtime configuration for a `PiWs` instance.
 </td></tr>
 <tr><td>
 
+[PiWsConfigLoaderOptions](./pi-ws.piwsconfigloaderoptions.md)
+
+</td><td>
+
+Options for `loadConfig()`<!-- -->.
+
+</td></tr>
+<tr><td>
+
 [PiWsListenOptions](./pi-ws.piwslistenoptions.md)
 
 </td><td>
 
 Optional per-listen overrides for host and port.
+
+</td></tr>
+<tr><td>
+
+[PiWsOptions](./pi-ws.piwsoptions.md)
+
+</td><td>
+
+Partial server configuration accepted from callers and config files.
+
+</td></tr>
+<tr><td>
+
+[PiWsTlsConfig](./pi-ws.piwstlsconfig.md)
+
+</td><td>
+
+TLS settings for running `pi-ws` over HTTPS / WSS.
 
 </td></tr>
 <tr><td>
@@ -137,6 +245,28 @@ Declarative WebSocket route registration.
 </td></tr>
 </tbody></table>
 
+## Variables
+
+<table><thead><tr><th>
+
+Variable
+
+</th><th>
+
+Description
+
+</th></tr></thead>
+<tbody><tr><td>
+
+[definePiWsConfig](./pi-ws.definepiwsconfig.md)
+
+</td><td>
+
+Typed helper for authoring `pi-ws` config files.
+
+</td></tr>
+</tbody></table>
+
 ## Type Aliases
 
 <table><thead><tr><th>
@@ -149,6 +279,15 @@ Description
 
 </th></tr></thead>
 <tbody><tr><td>
+
+[AuthorizationResult](./pi-ws.authorizationresult.md)
+
+</td><td>
+
+Result returned by a request authorizer.
+
+</td></tr>
+<tr><td>
 
 [HttpHandler](./pi-ws.httphandler.md)
 
@@ -164,6 +303,15 @@ HTTP route handler callback.
 </td><td>
 
 Supported `uWebSockets.js` HTTP route methods.
+
+</td></tr>
+<tr><td>
+
+[RequestAuthorizer](./pi-ws.requestauthorizer.md)
+
+</td><td>
+
+Synchronous request authorizer used by `pi-ws` guards.
 
 </td></tr>
 </tbody></table>

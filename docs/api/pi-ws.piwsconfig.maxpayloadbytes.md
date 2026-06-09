@@ -14,4 +14,4 @@ readonly maxPayloadBytes: number;
 
 ## Default Value
 
-`1048576` when loaded via `loadConfig()`
+`1048576` in the resolved runtime config

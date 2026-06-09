@@ -14,4 +14,4 @@ readonly port: number;
 
 ## Default Value
 
-`8787` when loaded via `loadConfig()`
+`8787` in the resolved runtime config

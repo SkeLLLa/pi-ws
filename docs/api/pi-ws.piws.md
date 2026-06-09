@@ -61,6 +61,28 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
+[authorize(authorizer)](./pi-ws.piws.authorize.md)
+
+</td><td>
+
+</td><td>
+
+Protects the built-in Pi WebSocket route with a synchronous authorizer.
+
+</td></tr>
+<tr><td>
+
+[clearAuthorization()](./pi-ws.piws.clearauthorization.md)
+
+</td><td>
+
+</td><td>
+
+Removes authorization from the built-in Pi WebSocket route.
+
+</td></tr>
+<tr><td>
+
 [close()](./pi-ws.piws.close.md)
 
 </td><td>
@@ -72,6 +94,39 @@ Stops the currently running server, if any.
 </td></tr>
 <tr><td>
 
+[configure(config)](./pi-ws.piws.configure.md)
+
+</td><td>
+
+</td><td>
+
+Merges additional server configuration into the current instance.
+
+</td></tr>
+<tr><td>
+
+[configurePi(config)](./pi-ws.piws.configurepi.md)
+
+</td><td>
+
+</td><td>
+
+Merges additional Pi subprocess settings into the current instance.
+
+</td></tr>
+<tr><td>
+
+[configureTls(config)](./pi-ws.piws.configuretls.md)
+
+</td><td>
+
+</td><td>
+
+Enables HTTPS / WSS by applying TLS settings to the server.
+
+</td></tr>
+<tr><td>
+
 [createApp()](./pi-ws.piws.createapp.md)
 
 </td><td>
@@ -79,6 +134,28 @@ Stops the currently running server, if any.
 </td><td>
 
 Builds a configured `uWebSockets.js` application without starting it.
+
+</td></tr>
+<tr><td>
+
+[disableTls()](./pi-ws.piws.disabletls.md)
+
+</td><td>
+
+</td><td>
+
+Disables HTTPS / WSS and returns the server to plain HTTP / WS mode.
+
+</td></tr>
+<tr><td>
+
+[getConfig()](./pi-ws.piws.getconfig.md)
+
+</td><td>
+
+</td><td>
+
+Returns the current resolved server configuration.
 
 </td></tr>
 <tr><td>
@@ -112,6 +189,17 @@ Starts listening and returns a handle for the running server.
 </td><td>
 
 Registers a WebSocket route on the underlying `uWebSockets.js` app.
+
+</td></tr>
+<tr><td>
+
+[setChatExample(enabled)](./pi-ws.piws.setchatexample.md)
+
+</td><td>
+
+</td><td>
+
+Enables or disables the built-in browser chat example routes.
 
 </td></tr>
 <tr><td>

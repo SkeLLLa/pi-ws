@@ -22,7 +22,7 @@ export function startPiRpcProcess(
   const resolved = resolvePiCommand(config);
   const child = spawn(resolved.command, resolved.args, {
     cwd: config.cwd,
-    env: config.env,
+    env: resolvePiEnvironment(config),
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
@@ -50,6 +50,19 @@ export function startPiRpcProcess(
   child.once('exit', handlers.onExit);
 
   return createPiRpcProcess(child);
+}
+
+function resolvePiEnvironment(
+  config: PiProcessConfig,
+): Readonly<Record<string, string>> {
+  if (config.agentDir === undefined || config.agentDir.trim() === '') {
+    return config.env;
+  }
+
+  return {
+    ...config.env,
+    PI_CODING_AGENT_DIR: config.agentDir,
+  };
 }
 
 function createPiRpcProcess(

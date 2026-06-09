@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 import { loadConfig, PiWs } from '../index.js';
 
-const config = loadConfig(process.env);
+const config = await loadConfig({
+  env: process.env,
+});
 const pipe = new PiWs(config);
 const server = await pipe.listen();
+const resolved = pipe.getConfig();
+const protocol = resolved.tls === undefined ? 'ws' : 'wss';
 
 console.log(
-  `pi-ws: listening on ws://${config.host}:${String(server.port)}${config.wsPrefix}/pi`,
+  `pi-ws: listening on ${protocol}://${resolved.host}:${String(server.port)}${resolved.wsPrefix}/pi`,
 );
 
 const stop = (): void => {

@@ -1,24 +1,30 @@
 import {
   App,
+  SSLApp,
   us_listen_socket_close,
+  type AppOptions,
   type TemplatedApp,
   type us_listen_socket,
 } from 'uWebSockets.js';
 import { createPiWebSocketRoute } from '../ws/pi-route.js';
-import { loadConfig } from './config.js';
+import { createDefaultConfig } from './config.js';
 import { installChatExampleRoutes } from './static.js';
 import type {
   HttpHandler,
   HttpMethod,
   HttpRoute,
+  PiProcessOptions,
   PiWsConfig,
   PiWsListenOptions,
+  PiWsOptions,
+  RequestAuthorizer,
   RouteInstaller,
   RunningServer,
   WebSocketRoute,
 } from './types.js';
 
-const createUwsApp = App;
+const createPlainApp = App;
+const createSecureApp = SSLApp;
 
 /**
  * Library-first wrapper around `uWebSockets.js` that exposes a built-in Pi RPC
@@ -33,7 +39,7 @@ const createUwsApp = App;
  * @public
  */
 export class PiWs {
-  readonly #config: PiWsConfig;
+  #config: PiWsConfig;
   readonly #httpRoutes: HttpRoute[] = [];
   readonly #wsRoutes: WebSocketRoute[] = [];
   readonly #installers: RouteInstaller[] = [];
@@ -44,13 +50,97 @@ export class PiWs {
    * Creates a new `PiWs` instance.
    *
    * @remarks
-   * The provided config is merged over `loadConfig(process.env)`. This makes
-   * the constructor convenient for both embedded usage and CLI-style startup.
+   * The constructor applies the provided partial options over built-in
+   * defaults. Use the async `loadConfig()` helper when you want file and
+   * environment-based configuration loading via c12.
    *
-   * @param config - Optional partial configuration merged over environment defaults.
+   * @param config - Optional partial configuration merged over library defaults.
    */
-  constructor(config: Partial<PiWsConfig> = {}) {
-    this.#config = mergeConfig(loadConfig(process.env), config);
+  constructor(config: PiWsOptions = {}) {
+    this.#config = mergeConfig(createDefaultConfig(process.env), config);
+  }
+
+  /**
+   * Returns the current resolved server configuration.
+   *
+   * @remarks
+   * The returned object is a snapshot of the configuration after applying
+   * environment defaults, constructor options, and any subsequent chainable
+   * configuration calls.
+   *
+   * @returns Current server configuration snapshot.
+   */
+  getConfig(): Readonly<PiWsConfig> {
+    return this.#config;
+  }
+
+  /**
+   * Merges additional server configuration into the current instance.
+   *
+   * @remarks
+   * This is the main library-first configuration entrypoint when you want to
+   * build a server incrementally instead of passing all options to the
+   * constructor.
+   *
+   * @param config - Partial configuration to merge.
+   * @returns The current `PiWs` instance.
+   */
+  configure(config: PiWsOptions): this {
+    this.#config = mergeConfig(this.#config, config);
+    return this;
+  }
+
+  /**
+   * Merges additional Pi subprocess settings into the current instance.
+   *
+   * @param config - Partial Pi process configuration to merge.
+   * @returns The current `PiWs` instance.
+   */
+  configurePi(config: PiProcessOptions): this {
+    this.#config = {
+      ...this.#config,
+      pi: {
+        ...this.#config.pi,
+        ...config,
+      },
+    };
+    return this;
+  }
+
+  /**
+   * Enables HTTPS / WSS by applying TLS settings to the server.
+   *
+   * @param config - TLS certificate and key settings.
+   * @returns The current `PiWs` instance.
+   */
+  configureTls(config: PiWsConfig['tls']): this {
+    if (config === undefined) {
+      throw new Error('TLS config is required');
+    }
+
+    this.#config = mergeConfig(this.#config, { tls: config });
+    return this;
+  }
+
+  /**
+   * Disables HTTPS / WSS and returns the server to plain HTTP / WS mode.
+   *
+   * @returns The current `PiWs` instance.
+   */
+  disableTls(): this {
+    this.#config = clearTlsConfig(this.#config);
+    return this;
+  }
+
+  /**
+   * Enables or disables the built-in browser chat example routes.
+   *
+   * @param enabled - Whether to serve the example.
+   * @returns The current `PiWs` instance.
+   */
+  setChatExample(enabled: boolean): this {
+    this.#config = mergeConfig(this.#config, { chatExample: enabled });
+    return this;
   }
 
   /**
@@ -111,6 +201,35 @@ export class PiWs {
   }
 
   /**
+   * Protects the built-in Pi WebSocket route with a synchronous authorizer.
+   *
+   * @remarks
+   * This is a convenience wrapper for the default `${wsPrefix}/pi` bridge
+   * route. Use `protectHttpHandler()` or `protectWebSocketBehavior()` for your
+   * own custom routes.
+   *
+   * @param authorizer - Synchronous request authorizer.
+   * @returns The current `PiWs` instance.
+   */
+  authorize(authorizer: RequestAuthorizer): this {
+    this.#config = {
+      ...this.#config,
+      piAuth: authorizer,
+    };
+    return this;
+  }
+
+  /**
+   * Removes authorization from the built-in Pi WebSocket route.
+   *
+   * @returns The current `PiWs` instance.
+   */
+  clearAuthorization(): this {
+    this.#config = clearPiAuthConfig(this.#config);
+    return this;
+  }
+
+  /**
    * Starts listening and returns a handle for the running server.
    *
    * @remarks
@@ -151,7 +270,7 @@ export class PiWs {
    * @returns Configured app instance.
    */
   createApp(): TemplatedApp {
-    const app = createUwsApp();
+    const app = createUwsApp(this.#config);
 
     installHealthRoute(app);
     if (this.#config.chatExample) {
@@ -163,6 +282,9 @@ export class PiWs {
       createPiWebSocketRoute({
         pi: this.#config.pi,
         maxPayloadBytes: this.#config.maxPayloadBytes,
+        ...(this.#config.piAuth === undefined
+          ? {}
+          : { authorize: this.#config.piAuth }),
       }),
     );
 
@@ -190,13 +312,13 @@ export class PiWs {
  * Prefer `new PiWs()` when you want to keep a reusable instance around.
  * This helper is useful when a one-shot startup function is enough.
  *
- * @param config - Full server configuration.
+ * @param config - Partial server options merged over built-in defaults.
  * @param installers - Optional route installers applied before listening.
  * @returns Running server handle.
  * @public
  */
 export async function createPiWsServer(
-  config: PiWsConfig,
+  config: PiWsOptions,
   installers: readonly RouteInstaller[] = [],
 ): Promise<RunningServer> {
   const pipe = new PiWs(config);
@@ -208,10 +330,9 @@ export async function createPiWsServer(
   return pipe.listen();
 }
 
-function mergeConfig(
-  base: PiWsConfig,
-  override: Partial<PiWsConfig>,
-): PiWsConfig {
+function mergeConfig(base: PiWsConfig, override: PiWsOptions): PiWsConfig {
+  const tls = mergeTlsConfig(base.tls, override.tls);
+
   return {
     ...base,
     ...override,
@@ -219,6 +340,95 @@ function mergeConfig(
       ...base.pi,
       ...override.pi,
     },
+    ...(tls === undefined ? {} : { tls }),
+  };
+}
+
+function clearTlsConfig(config: PiWsConfig): PiWsConfig {
+  const { tls: _tls, ...rest } = config;
+  void _tls;
+  return rest;
+}
+
+function clearPiAuthConfig(config: PiWsConfig): PiWsConfig {
+  const { piAuth: _piAuth, ...rest } = config;
+  void _piAuth;
+  return rest;
+}
+
+function mergeTlsConfig(
+  base: PiWsConfig['tls'],
+  override: PiWsConfig['tls'],
+): PiWsConfig['tls'] {
+  if (override === undefined) return base;
+  if (base === undefined) return override;
+
+  return {
+    keyFileName: override.keyFileName,
+    certFileName: override.certFileName,
+    ...((override.caFileName ?? base.caFileName) === undefined
+      ? {}
+      : {
+          caFileName: override.caFileName ?? base.caFileName,
+        }),
+    ...((override.passphrase ?? base.passphrase) === undefined
+      ? {}
+      : {
+          passphrase: override.passphrase ?? base.passphrase,
+        }),
+    ...((override.dhParamsFileName ?? base.dhParamsFileName) === undefined
+      ? {}
+      : {
+          dhParamsFileName: override.dhParamsFileName ?? base.dhParamsFileName,
+        }),
+    ...((override.sslCiphers ?? base.sslCiphers) === undefined
+      ? {}
+      : {
+          sslCiphers: override.sslCiphers ?? base.sslCiphers,
+        }),
+    ...((override.preferLowMemoryUsage ?? base.preferLowMemoryUsage) ===
+    undefined
+      ? {}
+      : {
+          preferLowMemoryUsage:
+            override.preferLowMemoryUsage ?? base.preferLowMemoryUsage,
+        }),
+  };
+}
+
+function createUwsApp(config: PiWsConfig): TemplatedApp {
+  if (config.tls === undefined) {
+    return createPlainApp();
+  }
+
+  return createSecureApp(toUwsTlsOptions(config.tls));
+}
+
+function toUwsTlsOptions(config: PiWsConfig['tls']): AppOptions {
+  if (config === undefined) {
+    throw new Error('TLS config is required to build an SSL app');
+  }
+
+  return {
+    key_file_name: config.keyFileName,
+    cert_file_name: config.certFileName,
+    ...(config.caFileName === undefined
+      ? {}
+      : { ca_file_name: config.caFileName }),
+    ...(config.passphrase === undefined
+      ? {}
+      : { passphrase: config.passphrase }),
+    ...(config.dhParamsFileName === undefined
+      ? {}
+      : { dh_params_file_name: config.dhParamsFileName }),
+    ...(config.sslCiphers === undefined
+      ? {}
+      : { ssl_ciphers: config.sslCiphers }),
+    ...(config.preferLowMemoryUsage === undefined
+      ? {}
+      : {
+          ssl_prefer_low_memory_usage: config.preferLowMemoryUsage,
+        }),
   };
 }
 

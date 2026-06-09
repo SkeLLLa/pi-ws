@@ -4,12 +4,14 @@
 
 ## loadConfig() function
 
-Loads `PiWs` configuration from environment variables.
+Loads `PiWs` configuration from c12 config sources plus `PI_WS_*` environment overrides.
 
 **Signature:**
 
 ```typescript
-export declare function loadConfig(env: NodeJS.ProcessEnv): PiWsConfig;
+export declare function loadConfig(
+  options?: PiWsConfigLoaderOptions,
+): Promise<PiWsConfig>;
 ```
 
 ## Parameters
@@ -29,25 +31,27 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-env
+options
 
 </td><td>
 
-NodeJS.ProcessEnv
+[PiWsConfigLoaderOptions](./pi-ws.piwsconfigloaderoptions.md)
 
 </td><td>
 
-Source environment, usually `process.env`<!-- -->.
+_(Optional)_ Loader settings and high-priority overrides.
 
 </td></tr>
 </tbody></table>
 
 **Returns:**
 
-[PiWsConfig](./pi-ws.piwsconfig.md)
+Promise&lt;[PiWsConfig](./pi-ws.piwsconfig.md)<!-- -->&gt;
 
-Parsed server configuration with defaults applied.
+Fully-resolved runtime configuration.
 
 ## Remarks
 
-Supported variables include `PI_WS_HOST`<!-- -->, `PI_WS_PORT`<!-- -->, `PI_WS_PREFIX`<!-- -->, `PI_WS_MAX_PAYLOAD_BYTES`<!-- -->, `PI_WS_CHAT_EXAMPLE`<!-- -->, `PI_WS_PI_COMMAND`<!-- -->, `PI_WS_PI_ARGS`<!-- -->, and `PI_WS_PI_CWD`<!-- -->. Values are validated and normalized before being returned.
+The resolved config order is:
+
+1. Explicit `overrides` passed to this function 2. `PI_WS_*` environment variables 3. `pi-ws.config.*` files discovered by c12 4. `package.json` `pi-ws` field when enabled 5. Built-in defaults

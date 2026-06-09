@@ -9,7 +9,7 @@ Creates a new `PiWs` instance.
 **Signature:**
 
 ```typescript
-constructor(config?: Partial<PiWsConfig>);
+constructor(config?: PiWsOptions);
 ```
 
 ## Parameters
@@ -33,15 +33,15 @@ config
 
 </td><td>
 
-Partial&lt;[PiWsConfig](./pi-ws.piwsconfig.md)<!-- -->&gt;
+[PiWsOptions](./pi-ws.piwsoptions.md)
 
 </td><td>
 
-_(Optional)_ Optional partial configuration merged over environment defaults.
+_(Optional)_ Optional partial configuration merged over library defaults.
 
 </td></tr>
 </tbody></table>
 
 ## Remarks
 
-The provided config is merged over `loadConfig(process.env)`<!-- -->. This makes the constructor convenient for both embedded usage and CLI-style startup.
+The constructor applies the provided partial options over built-in defaults. Use the async `loadConfig()` helper when you want file and environment-based configuration loading via c12.

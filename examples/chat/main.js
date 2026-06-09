@@ -103,7 +103,6 @@ function handlePiEvent(event) {
       handleResponse(event);
       break;
     case 'agent_start':
-      activeAssistantMessage = appendMessage('assistant', '');
       break;
     case 'message_update':
       handleMessageUpdate(event);

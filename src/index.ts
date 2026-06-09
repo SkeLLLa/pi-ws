@@ -7,15 +7,34 @@
  * @packageDocumentation
  */
 
-export { loadConfig } from './server/config.js';
+export {
+  composeAuthorizers,
+  createStaticTokenAuthorizer,
+  protectHttpHandler,
+  protectWebSocketBehavior,
+} from './server/auth.js';
+export {
+  createDefaultConfig,
+  definePiWsConfig,
+  loadConfig,
+} from './server/config.js';
+export type { PiWsConfigLoaderOptions } from './server/config.js';
 export { createPiWsServer, PiWs } from './server/server.js';
 export type {
+  AuthorizationFailure,
+  AuthorizationRequest,
+  AuthorizationResult,
+  AuthorizationSuccess,
   HttpHandler,
   HttpMethod,
   HttpRoute,
+  PiProcessOptions,
+  PiWsTlsConfig,
   PiWsConfig,
   PiWsListenOptions,
+  PiWsOptions,
   PiProcessConfig,
+  RequestAuthorizer,
   RouteInstaller,
   RunningServer,
   WebSocketRoute,

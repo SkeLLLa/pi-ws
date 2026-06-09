@@ -10,7 +10,7 @@ Convenience factory that creates a `PiWs`<!-- -->, installs routes, and starts l
 
 ```typescript
 export declare function createPiWsServer(
-  config: PiWsConfig,
+  config: PiWsOptions,
   installers?: readonly RouteInstaller[],
 ): Promise<RunningServer>;
 ```
@@ -36,11 +36,11 @@ config
 
 </td><td>
 
-[PiWsConfig](./pi-ws.piwsconfig.md)
+[PiWsOptions](./pi-ws.piwsoptions.md)
 
 </td><td>
 
-Full server configuration.
+Partial server options merged over built-in defaults.
 
 </td></tr>
 <tr><td>

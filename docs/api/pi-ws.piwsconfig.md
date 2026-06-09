@@ -14,7 +14,7 @@ export interface PiWsConfig
 
 ## Remarks
 
-`new PiWs()` merges the provided partial config over the defaults returned by `loadConfig(process.env)`<!-- -->.
+This is the fully-resolved runtime form produced by `createDefaultConfig()` or the async `loadConfig()` helper.
 
 ## Properties
 
@@ -105,6 +105,23 @@ Pi subprocess launch configuration.
 </td></tr>
 <tr><td>
 
+[piAuth?](./pi-ws.piwsconfig.piauth.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[RequestAuthorizer](./pi-ws.requestauthorizer.md)
+
+</td><td>
+
+_(Optional)_ Optional authorizer for the built-in Pi WebSocket route at `${wsPrefix}/pi`<!-- -->.
+
+</td></tr>
+<tr><td>
+
 [port](./pi-ws.piwsconfig.port.md)
 
 </td><td>
@@ -118,6 +135,23 @@ number
 </td><td>
 
 TCP port to listen on.
+
+</td></tr>
+<tr><td>
+
+[tls?](./pi-ws.piwsconfig.tls.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[PiWsTlsConfig](./pi-ws.piwstlsconfig.md)
+
+</td><td>
+
+_(Optional)_ Optional TLS settings. When provided, `pi-ws` starts an SSL app and serves HTTPS / WSS instead of plain HTTP / WS.
 
 </td></tr>
 <tr><td>

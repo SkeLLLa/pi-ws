@@ -1,4 +1,5 @@
 import type {
+  AppOptions,
   HttpRequest,
   HttpResponse,
   TemplatedApp,
@@ -6,12 +7,161 @@ import type {
 } from 'uWebSockets.js';
 
 /**
+ * Structured view of an incoming HTTP or WebSocket-upgrade request.
+ *
+ * @remarks
+ * Authorizers receive this object so they can inspect headers, query-string
+ * parameters, and request metadata without depending on raw `uWebSockets.js`
+ * objects.
+ *
+ * @public
+ */
+export interface AuthorizationRequest {
+  /**
+   * Request method, typically `GET` for WebSocket upgrade requests.
+   */
+  readonly method: string;
+  /**
+   * Full request URL path plus query string when present.
+   */
+  readonly url: string;
+  /**
+   * Request path without the query string.
+   */
+  readonly path: string;
+  /**
+   * Raw query string without the leading `?`.
+   */
+  readonly query: string;
+  /**
+   * Decoded query parameters. When a key appears multiple times, the first
+   * value is kept.
+   */
+  readonly queryParams: Readonly<Record<string, string>>;
+  /**
+   * Lower-cased request headers.
+   */
+  readonly headers: Readonly<Record<string, string>>;
+  /**
+   * Remote peer IP address as text, when available.
+   */
+  readonly remoteAddress?: string;
+}
+
+/**
+ * Successful authorization result.
+ *
+ * @public
+ */
+export interface AuthorizationSuccess {
+  /**
+   * Indicates the request is allowed.
+   */
+  readonly authorized: true;
+}
+
+/**
+ * Failed authorization result.
+ *
+ * @remarks
+ * Failures can customize the HTTP status, response headers, and body returned
+ * to the client.
+ *
+ * @public
+ */
+export interface AuthorizationFailure {
+  /**
+   * Indicates the request is denied.
+   */
+  readonly authorized: false;
+  /**
+   * HTTP status line sent to the client.
+   *
+   * @defaultValue `"401 Unauthorized"`
+   */
+  readonly status?: string;
+  /**
+   * Extra response headers sent with the failure response.
+   */
+  readonly headers?: Readonly<Record<string, string>>;
+  /**
+   * Optional failure response body.
+   */
+  readonly body?: string;
+}
+
+/**
+ * Result returned by a request authorizer.
+ *
+ * @public
+ */
+export type AuthorizationResult = AuthorizationSuccess | AuthorizationFailure;
+
+/**
+ * Synchronous request authorizer used by `pi-ws` guards.
+ *
+ * @remarks
+ * Authorizers are intentionally synchronous to keep route handling simple and
+ * predictable with `uWebSockets.js`. If you need asynchronous or external auth,
+ * use `PiWs.use()` and implement the route directly against `uWebSockets.js`.
+ *
+ * @param request - Structured request data.
+ * @returns Authorization decision.
+ * @public
+ */
+export type RequestAuthorizer = (
+  request: AuthorizationRequest,
+) => AuthorizationResult;
+
+/**
+ * TLS settings for running `pi-ws` over HTTPS / WSS.
+ *
+ * @remarks
+ * These fields map directly to the `uWebSockets.js` SSL app options, but use
+ * camelCase names to match the rest of the `pi-ws` configuration surface.
+ *
+ * @public
+ */
+export interface PiWsTlsConfig {
+  /**
+   * Path to the TLS private key PEM file.
+   */
+  readonly keyFileName: NonNullable<AppOptions['key_file_name']>;
+  /**
+   * Path to the TLS certificate PEM file.
+   */
+  readonly certFileName: NonNullable<AppOptions['cert_file_name']>;
+  /**
+   * Optional CA bundle file.
+   */
+  readonly caFileName?: AppOptions['ca_file_name'];
+  /**
+   * Optional TLS private-key passphrase.
+   */
+  readonly passphrase?: AppOptions['passphrase'];
+  /**
+   * Optional Diffie-Hellman parameters file.
+   */
+  readonly dhParamsFileName?: AppOptions['dh_params_file_name'];
+  /**
+   * Optional OpenSSL cipher suite override.
+   */
+  readonly sslCiphers?: AppOptions['ssl_ciphers'];
+  /**
+   * Prefer lower TLS memory usage.
+   *
+   * @defaultValue `false`
+   */
+  readonly preferLowMemoryUsage?: boolean;
+}
+
+/**
  * Process launch settings for the local Pi RPC subprocess.
  *
  * @remarks
  * These settings are passed to the child process that runs Pi in RPC mode.
- * By default, `loadConfig()` uses the bundled Pi CLI and prepends `--mode rpc`
- * to the configured argument list.
+ * `pi-ws` uses the bundled Pi CLI by default and prepends `--mode rpc` to the
+ * configured argument list.
  *
  * @public
  */
@@ -21,7 +171,11 @@ export interface PiProcessConfig {
    */
   readonly command?: string;
   /**
-   * Arguments passed to the Pi CLI process.
+   * Additional raw arguments passed to the Pi CLI process.
+   *
+   * @remarks
+   * `pi-ws` always forces `--mode rpc` and then appends generated flags such as
+   * `--model` or `--system-prompt` before these extra arguments.
    */
   readonly args: readonly string[];
   /**
@@ -29,17 +183,129 @@ export interface PiProcessConfig {
    */
   readonly cwd?: string;
   /**
+   * Optional override for Pi's agent directory.
+   *
+   * @remarks
+   * When set, `pi-ws` injects `PI_CODING_AGENT_DIR` into the spawned Pi
+   * process environment. This is the easiest way to ship custom prompts,
+   * extensions, skills, themes, and model configuration with your app.
+   */
+  readonly agentDir?: string;
+  /**
+   * Optional Pi provider name, such as `openai` or `anthropic`.
+   */
+  readonly provider?: string;
+  /**
+   * Optional Pi model pattern or full model ID.
+   */
+  readonly model?: string;
+  /**
+   * Optional Pi thinking level.
+   */
+  readonly thinking?: string;
+  /**
+   * Optional Pi session display name.
+   */
+  readonly sessionName?: string;
+  /**
+   * Optional system prompt replacement passed as `--system-prompt`.
+   */
+  readonly systemPrompt?: string;
+  /**
+   * Optional extra system prompt snippets passed as repeated
+   * `--append-system-prompt` flags.
+   */
+  readonly appendSystemPrompt?: readonly string[];
+  /**
+   * Optional additional extension sources passed as repeated `--extension`
+   * flags.
+   */
+  readonly extensions?: readonly string[];
+  /**
+   * Optional additional prompt-template sources passed as repeated
+   * `--prompt-template` flags.
+   */
+  readonly promptTemplates?: readonly string[];
+  /**
    * Environment variables forwarded to the Pi subprocess.
    */
   readonly env: Readonly<Record<string, string>>;
 }
 
 /**
+ * Partial Pi subprocess configuration accepted from callers and config files.
+ *
+ * @remarks
+ * This is the library-facing input shape. `PiWs` resolves it into a full
+ * `PiProcessConfig` by applying defaults such as inheriting the current
+ * process environment and using an empty extra-args list.
+ *
+ * @public
+ */
+export interface PiProcessOptions {
+  /**
+   * Explicit command to spawn instead of the bundled Pi CLI.
+   */
+  readonly command?: string;
+  /**
+   * Additional raw arguments passed to the Pi CLI process.
+   */
+  readonly args?: readonly string[];
+  /**
+   * Optional working directory for the Pi subprocess.
+   */
+  readonly cwd?: string;
+  /**
+   * Optional override for Pi's agent directory.
+   */
+  readonly agentDir?: string;
+  /**
+   * Optional Pi provider name, such as `openai` or `anthropic`.
+   */
+  readonly provider?: string;
+  /**
+   * Optional Pi model pattern or full model ID.
+   */
+  readonly model?: string;
+  /**
+   * Optional Pi thinking level.
+   */
+  readonly thinking?: string;
+  /**
+   * Optional Pi session display name.
+   */
+  readonly sessionName?: string;
+  /**
+   * Optional system prompt replacement passed as `--system-prompt`.
+   */
+  readonly systemPrompt?: string;
+  /**
+   * Optional extra system prompt snippets passed as repeated
+   * `--append-system-prompt` flags.
+   */
+  readonly appendSystemPrompt?: readonly string[];
+  /**
+   * Optional additional extension sources passed as repeated `--extension`
+   * flags.
+   */
+  readonly extensions?: readonly string[];
+  /**
+   * Optional additional prompt-template sources passed as repeated
+   * `--prompt-template` flags.
+   */
+  readonly promptTemplates?: readonly string[];
+  /**
+   * Environment variables forwarded to the Pi subprocess.
+   */
+  readonly env?: Readonly<Record<string, string>>;
+}
+
+/**
  * Runtime configuration for a `PiWs` instance.
  *
  * @remarks
- * `new PiWs()` merges the provided partial config over the defaults returned
- * by `loadConfig(process.env)`.
+ * This is the fully-resolved runtime form produced by `createDefaultConfig()`
+ * or the async `loadConfig()` helper.
  *
  * @public
  */
@@ -47,37 +313,98 @@ export interface PiWsConfig {
   /**
    * Host or IP address to bind the HTTP/WebSocket server to.
    *
-   * @defaultValue `"0.0.0.0"` when loaded via `loadConfig()`
+   * @defaultValue `"0.0.0.0"` in the resolved runtime config
    */
   readonly host: string;
   /**
    * TCP port to listen on.
    *
-   * @defaultValue `8787` when loaded via `loadConfig()`
+   * @defaultValue `8787` in the resolved runtime config
    */
   readonly port: number;
   /**
    * Prefix reserved for built-in WebSocket routes such as `/ws/pi`.
    *
-   * @defaultValue `"/ws"` when loaded via `loadConfig()`
+   * @defaultValue `"/ws"` in the resolved runtime config
    */
   readonly wsPrefix: string;
   /**
    * Maximum accepted inbound WebSocket frame size in bytes.
    *
-   * @defaultValue `1048576` when loaded via `loadConfig()`
+   * @defaultValue `1048576` in the resolved runtime config
    */
   readonly maxPayloadBytes: number;
+  /**
+   * Optional TLS settings. When provided, `pi-ws` starts an SSL app and serves
+   * HTTPS / WSS instead of plain HTTP / WS.
+   */
+  readonly tls?: PiWsTlsConfig;
   /**
    * Pi subprocess launch configuration.
    */
   readonly pi: PiProcessConfig;
   /**
+   * Optional authorizer for the built-in Pi WebSocket route at
+   * `${wsPrefix}/pi`.
+   *
+   * @remarks
+   * This protects the default Pi bridge route only. Use `protectHttpHandler()`
+   * or `protectWebSocketBehavior()` for your own custom routes.
+   */
+  readonly piAuth?: RequestAuthorizer;
+  /**
    * Enables serving the built-in browser chat example routes.
    *
-   * @defaultValue `true` when loaded via `loadConfig()`
+   * @defaultValue `true` in the resolved runtime config
    */
   readonly chatExample: boolean;
+}
+
+/**
+ * Partial server configuration accepted from callers and config files.
+ *
+ * @remarks
+ * This is the public input shape used by `new PiWs()`, `configure()`, and the
+ * async `loadConfig()` helper. It keeps nested objects optional so the package
+ * can be used as a composable building block instead of requiring callers to
+ * provide the fully-resolved runtime config up front.
+ *
+ * @public
+ */
+export interface PiWsOptions {
+  /**
+   * Host or IP address to bind the HTTP/WebSocket server to.
+   */
+  readonly host?: string;
+  /**
+   * TCP port to listen on.
+   */
+  readonly port?: number;
+  /**
+   * Prefix reserved for built-in WebSocket routes such as `/ws/pi`.
+   */
+  readonly wsPrefix?: string;
+  /**
+   * Maximum accepted inbound WebSocket frame size in bytes.
+   */
+  readonly maxPayloadBytes?: number;
+  /**
+   * Optional TLS settings. When provided, `pi-ws` starts an SSL app and serves
+   * HTTPS / WSS instead of plain HTTP / WS.
+   */
+  readonly tls?: PiWsTlsConfig;
+  /**
+   * Pi subprocess launch settings.
+   */
+  readonly pi?: PiProcessOptions;
+  /**
+   * Optional authorizer for the built-in Pi WebSocket route.
+   */
+  readonly piAuth?: RequestAuthorizer;
+  /**
+   * Enables serving the built-in browser chat example routes.
+   */
+  readonly chatExample?: boolean;
 }
 
 /**

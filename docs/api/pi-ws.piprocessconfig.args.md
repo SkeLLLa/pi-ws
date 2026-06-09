@@ -4,10 +4,14 @@
 
 ## PiProcessConfig.args property
 
-Arguments passed to the Pi CLI process.
+Additional raw arguments passed to the Pi CLI process.
 
 **Signature:**
 
 ```typescript
 readonly args: readonly string[];
 ```
+
+## Remarks
+
+`pi-ws` always forces `--mode rpc` and then appends generated flags such as `--model` or `--system-prompt` before these extra arguments.

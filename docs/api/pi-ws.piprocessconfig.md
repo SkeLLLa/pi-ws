@@ -9,12 +9,12 @@ Process launch settings for the local Pi RPC subprocess.
 **Signature:**
 
 ```typescript
-export interface PiProcessConfig 
+export interface PiProcessConfig
 ```
 
 ## Remarks
 
-These settings are passed to the child process that runs Pi in RPC mode. By default, `loadConfig()` uses the bundled Pi CLI and prepends `--mode rpc` to the configured argument list.
+These settings are passed to the child process that runs Pi in RPC mode. `pi-ws` uses the bundled Pi CLI by default and prepends `--mode rpc` to the configured argument list.
 
 ## Properties
 
@@ -22,106 +22,238 @@ These settings are passed to the child process that runs Pi in RPC mode. By defa
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
 
-
 </th></tr></thead>
 <tbody><tr><td>
 
-[args](./pi-ws.piprocessconfig.args.md)
-
+[agentDir?](./pi-ws.piprocessconfig.agentdir.md)
 
 </td><td>
 
 `readonly`
 
+</td><td>
+
+string
+
+</td><td>
+
+_(Optional)_ Optional override for Pi's agent directory.
+
+</td></tr>
+<tr><td>
+
+[appendSystemPrompt?](./pi-ws.piprocessconfig.appendsystemprompt.md)
+
+</td><td>
+
+`readonly`
 
 </td><td>
 
 readonly string\[\]
 
+</td><td>
+
+_(Optional)_ Optional extra system prompt snippets passed as repeated `--append-system-prompt` flags.
+
+</td></tr>
+<tr><td>
+
+[args](./pi-ws.piprocessconfig.args.md)
 
 </td><td>
 
-Arguments passed to the Pi CLI process.
+`readonly`
 
+</td><td>
+
+readonly string\[\]
+
+</td><td>
+
+Additional raw arguments passed to the Pi CLI process.
 
 </td></tr>
 <tr><td>
 
 [command?](./pi-ws.piprocessconfig.command.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Explicit command to spawn instead of the bundled Pi CLI.
-
 
 </td></tr>
 <tr><td>
 
 [cwd?](./pi-ws.piprocessconfig.cwd.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Optional working directory for the Pi subprocess.
-
 
 </td></tr>
 <tr><td>
 
 [env](./pi-ws.piprocessconfig.env.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Readonly&lt;Record&lt;string, string&gt;&gt;
 
-
 </td><td>
 
 Environment variables forwarded to the Pi subprocess.
 
+</td></tr>
+<tr><td>
+
+[extensions?](./pi-ws.piprocessconfig.extensions.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+readonly string\[\]
+
+</td><td>
+
+_(Optional)_ Optional additional extension sources passed as repeated `--extension` flags.
+
+</td></tr>
+<tr><td>
+
+[model?](./pi-ws.piprocessconfig.model.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+string
+
+</td><td>
+
+_(Optional)_ Optional Pi model pattern or full model ID.
+
+</td></tr>
+<tr><td>
+
+[promptTemplates?](./pi-ws.piprocessconfig.prompttemplates.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+readonly string\[\]
+
+</td><td>
+
+_(Optional)_ Optional additional prompt-template sources passed as repeated `--prompt-template` flags.
+
+</td></tr>
+<tr><td>
+
+[provider?](./pi-ws.piprocessconfig.provider.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+string
+
+</td><td>
+
+_(Optional)_ Optional Pi provider name, such as `openai` or `anthropic`<!-- -->.
+
+</td></tr>
+<tr><td>
+
+[sessionName?](./pi-ws.piprocessconfig.sessionname.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+string
+
+</td><td>
+
+_(Optional)_ Optional Pi session display name.
+
+</td></tr>
+<tr><td>
+
+[systemPrompt?](./pi-ws.piprocessconfig.systemprompt.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+string
+
+</td><td>
+
+_(Optional)_ Optional system prompt replacement passed as `--system-prompt`<!-- -->.
+
+</td></tr>
+<tr><td>
+
+[thinking?](./pi-ws.piprocessconfig.thinking.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+string
+
+</td><td>
+
+_(Optional)_ Optional Pi thinking level.
 
 </td></tr>
 </tbody></table>
-

@@ -14,4 +14,4 @@ readonly chatExample: boolean;
 
 ## Default Value
 
-`true` when loaded via `loadConfig()`
+`true` in the resolved runtime config

@@ -14,4 +14,4 @@ readonly wsPrefix: string;
 
 ## Default Value
 
-`"/ws"` when loaded via `loadConfig()`
+`"/ws"` in the resolved runtime config

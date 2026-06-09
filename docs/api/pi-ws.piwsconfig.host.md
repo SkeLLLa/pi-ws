@@ -14,4 +14,4 @@ readonly host: string;
 
 ## Default Value
 
-`"0.0.0.0"` when loaded via `loadConfig()`
+`"0.0.0.0"` in the resolved runtime config
