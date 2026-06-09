@@ -50,6 +50,18 @@ npm install pi-ws
 
 Node.js `>=22.19.0` is required.
 
+## Documentation
+
+- [Getting started](docs/GETTING_STARTED.md) - prerequisites, first server, and
+  first WebSocket message.
+- [Examples](examples/README.md) - runnable browser chat, provider keys, auth,
+  artifacts, and sandbox directories.
+- [Security guide](docs/SECURITY.md) - threat model, auth, sandbox limits, and
+  deployment checklist.
+- [Contributing guide](docs/CONTRIBUTING.md) - local setup, test commands,
+  generated docs, and pull request expectations.
+- [API reference](docs/api/index.md) - generated TypeScript API docs.
+
 ## Quick Start
 
 ```ts
