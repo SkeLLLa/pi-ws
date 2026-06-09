@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pi-pipe chat example</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">pi-pipe example</p>
+        <h1>Chat with a local Pi agent over WebSocket</h1>
+        <p>
+          This page sends Pi RPC <code>prompt</code> commands to
+          <code>/ws/pi</code> and renders streaming assistant text events.
+        </p>
+      </section>
+
+      <section class="panel connection-panel">
+        <label for="ws-url">WebSocket URL</label>
+        <div class="connection-row">
+          <input id="ws-url" name="ws-url" type="url" />
+          <button id="connect" type="button">Connect</button>
+        </div>
+        <p id="status" class="status">Disconnected</p>
+      </section>
+
+      <section id="messages" class="messages" aria-live="polite"></section>
+
+      <form id="composer" class="composer">
+        <textarea
+          id="prompt"
+          name="prompt"
+          rows="3"
+          placeholder="Ask Pi to explain this repository, write code, or inspect files..."
+        ></textarea>
+        <div class="composer-actions">
+          <button id="abort" type="button">Abort</button>
+          <button id="send" type="submit">Send</button>
+        </div>
+      </form>
+
+      <details class="panel event-log">
+        <summary>Raw events</summary>
+        <pre id="events"></pre>
+      </details>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

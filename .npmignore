@@ -1,0 +1,43 @@
+# Source and tests
+src/
+test/
+
+# Repository metadata and automation
+.agents/
+.claude/
+.codex/
+.github/
+
+# Local environment and tooling
+.env
+.env.*
+.mise.toml
+.prettierignore
+.prettierrc.mjs
+eslint.config.mjs
+tsconfig.json
+tsconfig.build.json
+pnpm-workspace.yaml
+
+# Build and coverage artifacts
+coverage/
+lcov.info
+temp/
+.tmp/
+*.tsbuildinfo
+
+# Development-only docs and examples helpers
+docs/
+examples/README.md
+examples/*.mjs
+
+# Dependency directories and logs
+node_modules/
+logs/
+*.log
+.eslintcache
+.npm
+.pnpm-debug.log*
+
+# Misc local files
+base64

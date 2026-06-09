@@ -1,0 +1,41 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Caches
+.npm
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variable files
+.env
+.env.*.local
+.env.local
+
+# Dist
+dist
+
+# Temporary directories
+temp
+.tmp
+
+# Coverage
+coverage
+lcov.info
