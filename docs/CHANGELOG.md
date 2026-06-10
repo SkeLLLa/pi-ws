@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/SkeLLLa/pi-ws/compare/v1.1.0...v1.1.1) (2026-06-10)
+
+### Fixes
+
+* republish ([ce96faa](https://github.com/SkeLLLa/pi-ws/commit/ce96faa5a282778016b709c6d39d54097e496110))
+
 ## [1.1.0](https://github.com/SkeLLLa/pi-ws/compare/v1.0.2...v1.1.0) (2026-06-09)
 
 ### Fixes
